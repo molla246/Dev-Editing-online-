@@ -1,0 +1,5476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>DevEditor - Mobile Code Editor</title>
+  <meta name="description" content="Professional mobile code editor featuring multi-tab editing, quick symbol toolbar with Ctrl modifier, file manager, live preview, and QuickEdit-style settings." />
+
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Ace Editor Core & Common Modes CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/theme-monokai.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/theme-dracula.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/theme-tomorrow_night.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/theme-chrome.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-html.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-c_cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/mode-java.min.js"></script>
+
+  <style>
+    /* Reset & Theme Variables */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-dark: #1e1e1e;
+      --header-bg: #2d2d2d;
+      --tab-bg: #252526;
+      --tab-active-bg: #1e1e1e;
+      --tab-active-border: #4ade80;
+      --action-bar-bg: #f3f4f6;
+      --action-bar-border: #e5e7eb;
+      --action-btn-color: #4b5563;
+      --action-btn-hover: #1f2937;
+      --bottom-bar-bg: #252526;
+      --btn-bg: #333338;
+      --btn-border: #3e3e42;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary-green: #22c55e;
+      --primary-blue: #3b82f6;
+      --ctrl-glow: #2563eb;
+      --font-mono: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+    }
+
+    body.light-theme {
+      --bg-dark: #ffffff;
+      --header-bg: #f3f4f6;
+      --tab-bg: #e5e7eb;
+      --tab-active-bg: #ffffff;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --btn-bg: #f9fafb;
+      --btn-border: #d1d5db;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 1. App Top Header */
+    #top-header {
+      height: 48px;
+      background-color: var(--header-bg);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .header-icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 18px;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s;
+    }
+
+    .header-icon-btn:active {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .title-wrapper {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .app-file-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-file-stats {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    /* 2. Multi-Tab Bar */
+    #tab-bar {
+      height: 36px;
+      background-color: var(--tab-bg);
+      display: flex;
+      align-items: flex-end;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      scrollbar-width: none;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+      flex-shrink: 0;
+      z-index: 19;
+      padding: 0 4px;
+      gap: 2px;
+    }
+    #tab-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .editor-tab {
+      height: 32px;
+      padding: 0 12px;
+      background-color: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      border-bottom: 2px solid transparent;
+      transition: background-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .editor-tab.active {
+      background-color: var(--tab-active-bg);
+      color: var(--text-main);
+      font-weight: 500;
+      border-bottom: 2px solid var(--tab-active-border);
+    }
+
+    .editor-tab .tab-dirty {
+      color: #38bdf8;
+      font-weight: bold;
+      display: none;
+    }
+    .editor-tab.is-dirty .tab-dirty {
+      display: inline;
+    }
+
+    .tab-close-icon {
+      font-size: 12px;
+      opacity: 0.6;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tab-close-icon:hover {
+      opacity: 1;
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .add-tab-btn {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 4px;
+      margin-left: 2px;
+      align-self: center;
+    }
+    .add-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* 3. Bottom Action Toolbar with Green Run Button */
+    #action-bar {
+      height: 44px;
+      background-color: #f3f4f6;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      flex-shrink: 0;
+      overflow: hidden;
+      z-index: 24;
+    }
+
+    #action-bar-items {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    #action-bar-items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .action-bar-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #4b5563;
+      width: 38px;
+      height: 36px;
+      min-width: 36px;
+      border-radius: 6px;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.12s, transform 0.08s, color 0.12s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .action-bar-btn:active {
+      transform: scale(0.92);
+      background-color: #e5e7eb;
+      color: #111827;
+    }
+
+    /* 4. Editor Area */
+    #editor-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+    }
+
+    #editor {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      font-size: 16px;
+      font-family: var(--font-mono);
+      line-height: 1.5;
+    }
+
+    /* 5. Mobile Selection Bubble Popup (Screenshot 7) */
+    #selection-bubble {
+      position: absolute;
+      background-color: #ffffff;
+      color: #1f2937;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: center;
+      padding: 2px 4px;
+      z-index: 100;
+      user-select: none;
+      transform: translate(-50%, -100%);
+      margin-top: -12px;
+      white-space: nowrap;
+    }
+
+    #selection-bubble.show {
+      display: flex;
+    }
+
+    .bubble-btn {
+      background: transparent;
+      border: none;
+      color: #374151;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bubble-btn:active {
+      background-color: #f3f4f6;
+    }
+
+    /* 6. Bottom Quick Toolbar with [Ctrl] Pulse Glow */
+    #bottom-quick-bar {
+      height: 48px;
+      background-color: var(--bottom-bar-bg);
+      border-top: 1px solid #3e3e42;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      gap: 5px;
+      flex-shrink: 0;
+      z-index: 25;
+      overflow: hidden;
+    }
+
+    #symbols-scroll-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      scrollbar-width: none;
+      height: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    #symbols-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quick-key {
+      min-width: 38px;
+      height: 38px;
+      padding: 0 9px;
+      background-color: var(--btn-bg);
+      color: var(--text-main);
+      border: 1px solid var(--btn-border);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 14.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: manipulation;
+      user-select: none;
+      transition: background-color 0.12s, transform 0.08s;
+      flex-shrink: 0;
+    }
+
+    .quick-key:active {
+      transform: scale(0.92);
+      background-color: #4b4b54;
+    }
+
+    /* [Ctrl] Button with Active Blue Glow Pulse */
+    .ctrl-key {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      background-color: #2e3440;
+      color: #88c0d0;
+      border-color: #4c566a;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-key.active-ctrl {
+      background-color: #2563eb !important;
+      color: #ffffff !important;
+      border-color: #60a5fa !important;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.85);
+      animation: ctrlPulse 1.4s infinite alternate;
+    }
+
+    @keyframes ctrlPulse {
+      0% {
+        box-shadow: 0 0 4px #2563eb, 0 0 10px #3b82f6;
+        transform: scale(0.98);
+      }
+      100% {
+        box-shadow: 0 0 14px #2563eb, 0 0 22px #60a5fa;
+        transform: scale(1.04);
+      }
+    }
+
+    /* Fixed Green Run Button at Bottom Right */
+    .fixed-run-btn {
+      width: 42px;
+      height: 38px;
+      background-color: #16a34a;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-left: 2px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      transition: background-color 0.15s, transform 0.08s;
+    }
+
+    .fixed-run-btn:active {
+      transform: scale(0.94);
+      background-color: #15803d;
+    }
+
+    /* 7. Dropdown Menus (Screenshots 1 & 2) */
+    .custom-dropdown-menu {
+      position: fixed;
+      top: 48px;
+      background-color: #ffffff;
+      color: #1f2937;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      min-width: 195px;
+      padding: 6px 0;
+      z-index: 1000;
+      display: none;
+      border: 1px solid #e5e7eb;
+      animation: menuFadeIn 0.15s ease;
+    }
+
+    .custom-dropdown-menu.show {
+      display: block;
+    }
+
+    #folder-dropdown-menu {
+      right: 74px;
+      top: 48px;
+    }
+
+    #dots-dropdown-menu {
+      right: 8px;
+      top: 48px;
+      max-height: 82vh;
+      overflow-y: auto;
+    }
+
+    #settings-dropdown-menu {
+      position: absolute;
+      right: 12px;
+      top: 48px;
+      z-index: 10000;
+      min-width: 195px;
+    }
+
+    @keyframes menuFadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dropdown-item {
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      color: #374151;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.12s;
+    }
+
+    .dropdown-item i {
+      font-size: 16px;
+      width: 20px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .dropdown-item:active {
+      background-color: #f3f4f6;
+      color: #111827;
+    }
+
+    .dropdown-item.checkbox-item {
+      justify-content: space-between;
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background-color: #e5e7eb;
+      margin: 4px 0;
+    }
+
+    /* 8. Slide-In Navigation Drawer (Screenshot 8) */
+    #drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(2px);
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    #drawer-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    #nav-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 290px;
+      max-width: 82vw;
+      background-color: #ffffff;
+      color: #1f2937;
+      z-index: 2001;
+      transform: translateX(-100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 6px 0 24px rgba(0, 0, 0, 0.4);
+    }
+
+    #nav-drawer.active {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      height: 130px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 60%, #06b6d4 100%);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      color: #ffffff;
+      position: relative;
+    }
+
+    .drawer-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .drawer-header span {
+      font-size: 12px;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .drawer-menu-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .drawer-menu-item {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.12s;
+    }
+
+    .drawer-menu-item i {
+      font-size: 18px;
+      width: 24px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .drawer-menu-item:active {
+      background-color: #f3f4f6;
+      color: #111827;
+    }
+
+    .drawer-divider {
+      height: 1px;
+      background-color: #e5e7eb;
+      margin: 6px 0;
+    }
+
+    /* 9. Live Preview Screen (Screenshots 4 & 5) */
+    #preview-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: #ffffff;
+      color: #111827;
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    #preview-overlay.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .preview-header-bar {
+      height: 52px;
+      background-color: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      flex-shrink: 0;
+    }
+
+    .preview-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .preview-back-btn {
+      padding: 6px 12px;
+      background-color: #1e293b;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-title-info {
+      min-width: 0;
+    }
+
+    .preview-main-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .preview-path-title {
+      font-size: 11px;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .preview-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      color: #334155;
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .preview-tool-btn:active {
+      background-color: #f1f5f9;
+    }
+
+    .preview-frame-container {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background-color: #ffffff;
+    }
+
+    #preview-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background-color: #ffffff;
+    }
+
+    /* Draggable Floating Gear/Wrench Button in Preview (Screenshot 6) */
+    #draggable-gear-btn {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background-color: #9ca3af;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      cursor: grab;
+      touch-action: none;
+      z-index: 5500;
+      user-select: none;
+    }
+
+    #draggable-gear-btn:active {
+      cursor: grabbing;
+      transform: scale(0.96);
+    }
+
+    /* 10. Settings Full Page Screen (Screenshot 9) */
+    #settings-screen {
+      position: fixed;
+      inset: 0;
+      background-color: #ffffff;
+      color: #111827;
+      z-index: 4000;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #settings-screen.active {
+      transform: translateX(0);
+    }
+
+    .settings-header {
+      height: 52px;
+      background-color: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .settings-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .settings-back-btn {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      color: #374151;
+      cursor: pointer;
+    }
+
+    .settings-header-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .settings-scroll-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px 40px;
+    }
+
+    .settings-section-title {
+      color: #16a34a;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 18px 0 6px;
+      text-transform: capitalize;
+    }
+
+    .setting-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .setting-texts {
+      flex: 1;
+      padding-right: 12px;
+    }
+
+    .setting-name {
+      font-size: 14.5px;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .setting-desc {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    /* Android style switch toggle */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #cbd5e1;
+      transition: .2s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #22c55e;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* 11. Mini Toolbar Customization Dialog (Screenshot 10) */
+    #mini-toolbar-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      z-index: 6000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    #mini-toolbar-modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .mini-toolbar-dialog {
+      background-color: #ffffff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 360px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+
+    .dialog-header {
+      padding: 18px 20px 10px;
+    }
+
+    .dialog-title-green {
+      color: #22c55e;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .mini-toolbar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px;
+    }
+
+    .reorder-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 4px;
+      border-bottom: 1px solid #f1f5f9;
+      user-select: none;
+    }
+
+    .reorder-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .drag-handle-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .arrow-move-btn {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 3px;
+      font-size: 10px;
+      width: 22px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4b5563;
+      cursor: pointer;
+    }
+
+    .custom-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: #22c55e;
+      cursor: pointer;
+    }
+
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 14px 18px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .dialog-btn {
+      background: transparent;
+      border: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: #16a34a;
+      cursor: pointer;
+      padding: 6px 10px;
+    }
+
+    /* 12. File Manager & Dialogs */
+    .fs-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.12s, border-color 0.12s;
+      gap: 8px;
+    }
+    .fs-item:hover, .fs-item:active {
+      background-color: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+    .fs-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .fs-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .fs-icon-folder { background-color: #fef3c7; color: #d97706; }
+    .fs-icon-html { background-color: #ffedd5; color: #ea580c; }
+    .fs-icon-js { background-color: #fef9c3; color: #ca8a04; }
+    .fs-icon-css { background-color: #e0f2fe; color: #0284c7; }
+    .fs-icon-py { background-color: #dcfce7; color: #16a34a; }
+    .fs-icon-json { background-color: #f3e8ff; color: #9333ea; }
+    .fs-icon-code { background-color: #f1f5f9; color: #475569; }
+
+    .fs-info-col {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .fs-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fs-meta {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 1px;
+    }
+    .fs-actions-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .fs-btn-tool {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background-color 0.12s, color 0.12s;
+    }
+    .fs-btn-tool:active {
+      background-color: rgba(0, 0, 0, 0.08);
+      color: #0f172a;
+    }
+    .fs-btn-tool.starred {
+      color: #eab308;
+    }
+    .fs-btn-tool.del:active {
+      color: #ef4444;
+      background-color: #fee2e2;
+    }
+
+    .generic-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(2px);
+      z-index: 6500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .generic-modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background-color: #ffffff;
+      color: #111827;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 380px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #1e293b;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .modal-input:focus {
+      border-color: #3b82f6;
+    }
+
+    .modal-btn-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .m-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .m-btn-cancel {
+      background-color: #f1f5f9;
+      color: #475569;
+    }
+
+    .m-btn-primary {
+      background-color: #2563eb;
+      color: #ffffff;
+    }
+
+    /* Toast */
+    #toast-wrap {
+      position: fixed;
+      bottom: 58px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background-color: #1f2937;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toastFade 2.6s forwards;
+    }
+
+    @keyframes toastFade {
+      0% { opacity: 0; transform: translateY(8px); }
+      10% { opacity: 1; transform: translateY(0); }
+      85% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-8px); }
+    }
+
+    /* ============================================================
+       DESKTOP & MOBILE MODE RESPONSIVE STYLES
+       ============================================================ */
+
+    /* 1. Header Center & Brand */
+    .top-center {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .desktop-brand {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #ffffff;
+      margin-right: 6px;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .desktop-brand .brand-icon {
+      color: #3b82f6;
+      font-size: 16px;
+    }
+
+    /* 2. Mode Switcher Segmented Pill */
+    .mode-switch-pill {
+      display: inline-flex;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 20px;
+      padding: 2px;
+      gap: 2px;
+      align-items: center;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .mode-pill-btn:hover {
+      color: #ffffff;
+    }
+    .mode-pill-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4);
+    }
+
+    /* 3. Desktop Header Quick Actions */
+    .desktop-header-actions {
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .desk-action-btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.12s, border-color 0.12s, color 0.12s, transform 0.08s;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .desk-action-btn:hover {
+      background: #3f3f46;
+      color: #ffffff;
+    }
+    .desk-action-btn:active {
+      transform: scale(0.96);
+    }
+    .desk-action-btn.btn-save-accent {
+      background: #1d4ed8;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+    .desk-action-btn.btn-save-accent:hover {
+      background: #2563eb;
+    }
+    .desk-action-btn.btn-run-accent {
+      background: #15803d;
+      border-color: #16a34a;
+      color: #ffffff;
+    }
+    .desk-action-btn.btn-run-accent:hover {
+      background: #16a34a;
+    }
+    .desk-action-btn.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
+      color: #ffffff;
+    }
+
+    /* 4. Workspace: Split Layout */
+    #workspace-main {
+      display: flex;
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* 5. Desktop Resizable Splitter */
+    #desktop-splitter {
+      display: none;
+      width: 8px;
+      background: #202024;
+      border-left: 1px solid #333338;
+      border-right: 1px solid #141416;
+      cursor: col-resize;
+      user-select: none;
+      z-index: 22;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    #desktop-splitter:hover,
+    #desktop-splitter.dragging {
+      background: #3b82f6;
+    }
+    .splitter-grip {
+      width: 2px;
+      height: 28px;
+      background: #52525b;
+      border-radius: 1px;
+    }
+
+    /* 6. Desktop Live Side-by-Side Split Preview Pane */
+    #desktop-preview-pane {
+      display: none;
+      flex-direction: column;
+      width: 50%;
+      min-width: 320px;
+      background: #18181b;
+      border-left: 1px solid #27272a;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      z-index: 21;
+      flex-shrink: 0;
+    }
+
+    .dp-header-bar {
+      height: 38px;
+      background: #202023;
+      border-bottom: 1px solid #2e2e32;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      flex-shrink: 0;
+      color: #e4e4e7;
+      font-size: 13px;
+      user-select: none;
+      gap: 8px;
+    }
+
+    .dp-header-left, .dp-header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+      font-size: 12px;
+      color: #22c55e;
+      margin-right: 4px;
+    }
+
+    .dp-tool-btn {
+      background: #2a2a2e;
+      border: 1px solid #38383e;
+      color: #d4d4d8;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.12s;
+    }
+    .dp-tool-btn:hover {
+      background: #3a3a42;
+      color: #ffffff;
+    }
+    .dp-tool-btn.active {
+      background: #14532d;
+      color: #86efac;
+      border-color: #22c55e;
+    }
+
+    .dp-viewport-switch {
+      display: inline-flex;
+      background: #141416;
+      padding: 2px;
+      border-radius: 5px;
+      gap: 2px;
+      border: 1px solid #2e2e33;
+    }
+
+    .dp-vp-btn {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      width: 26px;
+      height: 24px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+    }
+    .dp-vp-btn:hover {
+      color: #ffffff;
+    }
+    .dp-vp-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .dp-frame-wrapper {
+      flex: 1;
+      position: relative;
+      background: #ffffff;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      transition: max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+    }
+    .dp-frame-wrapper.vp-fluid {
+      width: 100%;
+      max-width: 100%;
+    }
+    .dp-frame-wrapper.vp-tablet {
+      width: 768px;
+      max-width: 768px;
+      margin: 0 auto;
+      border-left: 2px solid #3f3f46;
+      border-right: 2px solid #3f3f46;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+    }
+    .dp-frame-wrapper.vp-mobile {
+      width: 375px;
+      max-width: 375px;
+      margin: 0 auto;
+      border-left: 2px solid #3f3f46;
+      border-right: 2px solid #3f3f46;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+    }
+
+    #dp-live-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+    }
+
+    .dp-non-html {
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+      background: #18181b;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #f4f4f5;
+    }
+
+    /* 7. Live Console Drawer at bottom of split view */
+    .dp-console-drawer {
+      height: 140px;
+      background: #090d16;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      transition: height 0.2s ease;
+    }
+    .dp-console-drawer.collapsed {
+      height: 28px;
+    }
+
+    .dp-console-header {
+      height: 28px;
+      background: #020617;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .dp-console-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+
+    .dp-console-badge {
+      background: #334155;
+      color: #f8fafc;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+
+    .dp-console-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dp-mini-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .dp-mini-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .dp-console-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11.5px;
+    }
+
+    .dp-console-empty {
+      color: #64748b;
+      font-style: italic;
+      font-size: 11px;
+      padding: 4px 0;
+    }
+
+    .console-log-row {
+      display: flex;
+      gap: 6px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .console-log-row.log-info {
+      color: #cbd5e1;
+    }
+    .console-log-row.log-warn {
+      color: #fde047;
+      background: rgba(234, 179, 8, 0.12);
+    }
+    .console-log-row.log-error {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.16);
+      font-weight: 600;
+    }
+
+    /* 8. Desktop Status Info */
+    #desktop-status-info {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+      font-weight: 500;
+      font-family: var(--font-mono);
+      padding-left: 6px;
+      white-space: nowrap;
+    }
+
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 11px;
+    }
+
+    .btn-toggle-quickbar {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 3px 8px;
+      color: #475569;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+      transition: all 0.12s;
+    }
+    .btn-toggle-quickbar:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .btn-toggle-quickbar.active {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* 9. Storage Modal Search & Filter Chips */
+    .storage-search-input:focus {
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .storage-chip {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+    .storage-chip:hover {
+      background: #e2e8f0;
+    }
+    .storage-chip.active {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+
+    /* 10. Mode-Driven Behavior Rules */
+    /* Desktop Mode Styles */
+    #app-container.desktop-mode .desktop-brand {
+      display: inline-flex;
+    }
+    #app-container.desktop-mode .desktop-header-actions {
+      display: inline-flex;
+    }
+    #app-container.desktop-mode #desktop-status-info {
+      display: flex;
+    }
+    #app-container.desktop-mode #workspace-main {
+      flex-direction: row;
+    }
+    #app-container.desktop-mode #desktop-splitter {
+      display: flex;
+    }
+    #app-container.desktop-mode #desktop-preview-pane {
+      display: flex;
+    }
+    #app-container.desktop-mode #bottom-quick-bar.desktop-minimized {
+      display: none;
+    }
+
+    /* Mobile Mode Styles */
+    #app-container.mobile-mode .desktop-brand {
+      display: none !important;
+    }
+    #app-container.mobile-mode .desktop-header-actions {
+      display: none !important;
+    }
+    #app-container.mobile-mode #desktop-status-info {
+      display: none !important;
+    }
+    #app-container.mobile-mode #desktop-splitter {
+      display: none !important;
+    }
+    #app-container.mobile-mode #desktop-preview-pane {
+      display: none !important;
+    }
+    #app-container.mobile-mode #workspace-main {
+      flex-direction: column !important;
+    }
+    #app-container.mobile-mode #editor-container {
+      width: 100% !important;
+      flex: 1 !important;
+    }
+    #app-container.mobile-mode #bottom-quick-bar {
+      display: flex !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+    <!-- 1. Top Header (Screenshot 2 + Desktop Mode) -->
+    <header id="top-header">
+      <div class="top-left">
+        <button id="btn-hamburger" class="header-icon-btn" aria-label="Open Navigation Drawer">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="desktop-brand">
+          <i class="fa-solid fa-code brand-icon"></i>
+          <span>DevEditor</span>
+        </div>
+        <div class="title-wrapper">
+          <div id="app-active-filename" class="app-file-title">untitled</div>
+          <div id="app-file-stats" class="app-file-stats">0 chars, 1 lines</div>
+        </div>
+      </div>
+
+      <div class="top-center">
+        <!-- Interactive Mode Switcher (Mobile vs Desktop) -->
+        <div id="mode-switcher" class="mode-switch-pill" role="tablist" aria-label="Editor Layout Mode">
+          <button type="button" id="btn-mode-mobile" class="mode-pill-btn" title="Switch to Mobile Touch Layout">
+            <i class="fa-solid fa-mobile-screen"></i> <span>Mobile</span>
+          </button>
+          <button type="button" id="btn-mode-desktop" class="mode-pill-btn active" title="Switch to Desktop IDE Layout">
+            <i class="fa-solid fa-desktop"></i> <span>Desktop</span>
+          </button>
+        </div>
+
+        <!-- Desktop Header Action Buttons -->
+        <div id="desktop-header-actions" class="desktop-header-actions">
+          <button type="button" id="btn-desk-new" class="desk-action-btn" title="New Tab (Ctrl+N)">
+            <i class="fa-solid fa-file-circle-plus"></i> <span>New</span>
+          </button>
+          <button type="button" id="btn-desk-open" class="desk-action-btn" title="Open Storage (Ctrl+O)">
+            <i class="fa-solid fa-folder-open"></i> <span>Open</span>
+          </button>
+          <button type="button" id="btn-desk-save" class="desk-action-btn btn-save-accent" title="Save Active File (Ctrl+S)">
+            <i class="fa-solid fa-floppy-disk"></i> <span>Save</span>
+          </button>
+          <button type="button" id="btn-desk-run" class="desk-action-btn btn-run-accent" title="Run / Live Preview (Ctrl+Enter)">
+            <i class="fa-solid fa-play"></i> <span>Run</span>
+          </button>
+          <button type="button" id="btn-desk-split" class="desk-action-btn active" title="Toggle Side-by-Side Split Preview (Ctrl+B)">
+            <i class="fa-solid fa-table-columns"></i> <span>Split View</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <button id="btn-top-folder" class="header-icon-btn" title="Open File Storage">
+          <i class="fa-solid fa-folder"></i>
+        </button>
+        <button id="btn-top-edit" class="header-icon-btn" title="Rename or Find">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button id="btn-top-dots" class="header-icon-btn" aria-label="More Options">
+          <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. Multi-Tab Bar (Screenshot 2) -->
+    <nav id="tab-bar" aria-label="Editor Tabs">
+      <!-- Tabs populated dynamically -->
+      <button id="btn-add-tab" class="add-tab-btn" title="New Tab"><i class="fa-solid fa-plus"></i></button>
+    </nav>
+
+    <!-- 3. Workspace: Editor + Desktop Live Split View -->
+    <div id="workspace-main">
+      <!-- Ace Editor Container -->
+      <main id="editor-container">
+        <div id="editor"></div>
+
+        <!-- Mobile Long-Press / Selection Context Bubble (Screenshot 7) -->
+        <div id="selection-bubble">
+          <button id="bubble-select-all" class="bubble-btn" title="Select All">
+            <i class="fa-solid fa-table-cells-large"></i>
+          </button>
+          <button id="bubble-cut" class="bubble-btn" title="Cut">
+            <i class="fa-solid fa-scissors"></i>
+          </button>
+          <button id="bubble-copy" class="bubble-btn" title="Copy">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+          <button id="bubble-paste" class="bubble-btn" title="Paste">
+            <i class="fa-regular fa-clipboard"></i>
+          </button>
+          <button id="bubble-more" class="bubble-btn" title="More">
+            <i class="fa-solid fa-ellipsis"></i>
+          </button>
+        </div>
+      </main>
+
+      <!-- Desktop Resizable Splitter -->
+      <div id="desktop-splitter" class="desktop-splitter" title="Drag to resize editor and live preview">
+        <div class="splitter-grip"></div>
+      </div>
+
+      <!-- Desktop Live Side-by-Side Split Preview Pane -->
+      <aside id="desktop-preview-pane">
+        <div class="dp-header-bar">
+          <div class="dp-header-left">
+            <span class="dp-badge"><i class="fa-solid fa-bolt"></i> Live Preview</span>
+            <button type="button" id="dp-auto-run-btn" class="dp-tool-btn active" title="Toggle Auto-refresh on Typing">
+              <i class="fa-solid fa-arrows-rotate"></i> <span>Auto</span>
+            </button>
+            <button type="button" id="dp-refresh-btn" class="dp-tool-btn" title="Refresh Live Preview (Ctrl+Enter)">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+          <div class="dp-header-center">
+            <div class="dp-viewport-switch" title="Test responsive breakpoints">
+              <button type="button" id="dp-vp-fluid" class="dp-vp-btn active" title="Fluid Desktop (100%)">
+                <i class="fa-solid fa-desktop"></i>
+              </button>
+              <button type="button" id="dp-vp-tablet" class="dp-vp-btn" title="Tablet Viewport (768px)">
+                <i class="fa-solid fa-tablet-screen-button"></i>
+              </button>
+              <button type="button" id="dp-vp-mobile" class="dp-vp-btn" title="Mobile Viewport (375px)">
+                <i class="fa-solid fa-mobile-screen"></i>
+              </button>
+            </div>
+          </div>
+          <div class="dp-header-right">
+            <button type="button" id="dp-external-btn" class="dp-tool-btn" title="Open preview in new browser tab">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </button>
+            <button type="button" id="dp-fullscreen-btn" class="dp-tool-btn" title="Expand to Fullscreen Preview">
+              <i class="fa-solid fa-expand"></i>
+            </button>
+            <button type="button" id="dp-close-btn" class="dp-tool-btn" title="Close Split Preview (Ctrl+B)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="dp-frame-wrapper" class="dp-frame-wrapper vp-fluid">
+          <iframe id="dp-live-iframe" sandbox="allow-scripts allow-modals allow-forms allow-same-origin" title="Desktop Live Preview"></iframe>
+          <div id="dp-non-html-box" class="dp-non-html" style="display:none;"></div>
+        </div>
+
+        <!-- Desktop Integrated Live Console Logger -->
+        <div id="dp-console-drawer" class="dp-console-drawer">
+          <div class="dp-console-header" id="dp-console-header-toggle">
+            <div class="dp-console-title">
+              <i class="fa-solid fa-terminal"></i> Console
+              <span id="dp-console-count" class="dp-console-badge">0</span>
+            </div>
+            <div class="dp-console-actions">
+              <button type="button" id="dp-console-clear-btn" class="dp-mini-btn" title="Clear console output"><i class="fa-solid fa-ban"></i></button>
+              <button type="button" id="dp-console-toggle-btn" class="dp-mini-btn" title="Toggle console height"><i class="fa-solid fa-chevron-down"></i></button>
+            </div>
+          </div>
+          <div id="dp-console-body" class="dp-console-body">
+            <div class="dp-console-empty">Console ready. Output from preview appears here.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 4. Bottom Quick Symbols Toolbar (Ctrl, Func, Tab, Symbols) -->
+    <footer id="bottom-quick-bar" aria-label="Coding Symbols and Shortcuts">
+      <div id="symbols-scroll-container">
+        <!-- [Ctrl] button at the very beginning -->
+        <button type="button" id="ctrl-toggle-btn" class="quick-key ctrl-key" title="Toggle Ctrl shortcuts (A, X, C, V, S, Z)">
+          Ctrl
+        </button>
+        <div id="dynamic-keys-container" style="display:inline-flex; align-items:center; gap:5px;">
+          <!-- Normal symbol keys OR active-Ctrl shortcut keys -->
+        </div>
+      </div>
+    </footer>
+
+    <!-- 5. Bottom Action Bar with Green Run ▶ Button (Requested: Action bar at bottom with run button) -->
+    <section id="action-bar" aria-label="Quick Action Bar">
+      <!-- Desktop Status Bar Indicators -->
+      <div id="desktop-status-info">
+        <span class="status-tag" id="status-cursor-pos" title="Cursor Position"><i class="fa-regular fa-compass"></i> Ln 1, Col 1</span>
+        <span class="status-tag" id="status-char-count" title="Characters and Lines">0 chars</span>
+        <span class="status-tag" id="status-lang-badge" title="Language Mode">HTML</span>
+        <span class="status-tag" id="status-encoding" title="Encoding">UTF-8</span>
+        <button type="button" id="btn-toggle-quickbar" class="btn-toggle-quickbar" title="Toggle Mobile Symbols Toolbar">
+          <i class="fa-solid fa-keyboard"></i> Quick Symbols
+        </button>
+      </div>
+
+      <div id="action-bar-items">
+        <!-- Populated dynamically based on Mini Toolbar preferences -->
+      </div>
+      <button type="button" id="btn-action-run" class="fixed-run-btn" title="Run and Live Preview Code (Ctrl+Enter)">
+        <i class="fa-solid fa-play"></i>
+      </button>
+    </section>
+  </div>
+
+  <!-- Folder Dropdown Menu (Screenshot 2: next to pencil) -->
+  <div id="folder-dropdown-menu" class="custom-dropdown-menu">
+    <div class="dropdown-item" data-folder-action="new">
+      <i class="fa-solid fa-plus"></i> <span>New</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="open">
+      <i class="fa-solid fa-folder"></i> <span>Open</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="open_saf">
+      <i class="fa-solid fa-folder-open"></i> <span>Open (SAF)</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="save">
+      <i class="fa-solid fa-floppy-disk"></i> <span>Save</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="save_as">
+      <i class="fa-regular fa-floppy-disk"></i> <span>Save As</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="reload">
+      <i class="fa-solid fa-rotate"></i> <span>Reload</span>
+    </div>
+    <div class="dropdown-item" data-folder-action="close">
+      <i class="fa-solid fa-xmark"></i> <span>Close</span>
+    </div>
+  </div>
+
+  <!-- Three-Dots Dropdown Menu (Screenshot 1: right side 3-dots) -->
+  <div id="dots-dropdown-menu" class="custom-dropdown-menu">
+    <div class="dropdown-item" data-dots-action="search">
+      <i class="fa-solid fa-magnifying-glass"></i> <span>Search</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="share">
+      <i class="fa-solid fa-share-nodes"></i> <span>Share</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="goto_line">
+      <i class="fa-solid fa-forward-fast"></i> <span>Goto Line</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="syntax">
+      <i class="fa-solid fa-pen-nib"></i> <span>Syntax</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="encoding">
+      <i class="fa-solid fa-hashtag"></i> <span>Encoding</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="visual_styles">
+      <i class="fa-solid fa-palette"></i> <span>Visual Styles</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="statistics">
+      <i class="fa-solid fa-chart-simple"></i> <span>Statistics</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="execute">
+      <i class="fa-solid fa-play"></i> <span>Execute</span>
+    </div>
+    <div class="dropdown-item" data-dots-action="print">
+      <i class="fa-solid fa-print"></i> <span>Print</span>
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item checkbox-item" data-dots-action="toggle_mini_toolbar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <i class="fa-solid fa-sliders"></i> <span>Mini Toolbar</span>
+      </div>
+      <input type="checkbox" id="dots-chk-toolbar" checked style="accent-color:#22c55e; width:16px; height:16px; pointer-events:none;" />
+    </div>
+    <div class="dropdown-item checkbox-item" data-dots-action="toggle_word_wrap">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <i class="fa-solid fa-arrow-turn-down"></i> <span>Word Wrap</span>
+      </div>
+      <input type="checkbox" id="dots-chk-wrap" style="accent-color:#22c55e; width:16px; height:16px; pointer-events:none;" />
+    </div>
+    <div class="dropdown-item checkbox-item" data-dots-action="toggle_read_only">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <i class="fa-solid fa-lock"></i> <span>Read Only</span>
+      </div>
+      <input type="checkbox" id="dots-chk-readonly" style="accent-color:#22c55e; width:16px; height:16px; pointer-events:none;" />
+    </div>
+  </div>
+
+  <!-- Side Navigation Drawer (Screenshot 8) -->
+  <div id="drawer-backdrop"></div>
+  <aside id="nav-drawer" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <h2>DevEditor</h2>
+      <span>v1.12.11 Professional</span>
+    </div>
+    <div class="drawer-menu-list">
+      <div class="drawer-menu-item" data-drawer-action="internal_storage">
+        <i class="fa-solid fa-mobile-screen"></i> <span>Internal Storage</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="bookmarks">
+        <i class="fa-regular fa-star"></i> <span>Bookmarks</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="recent">
+        <i class="fa-solid fa-clock-rotate-left"></i> <span>Recent Files</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="storage_manager">
+        <i class="fa-solid fa-cloud"></i> <span>Storage Manager</span>
+      </div>
+      <div class="drawer-divider"></div>
+      <div class="drawer-menu-item" data-drawer-action="remove_ads">
+        <i class="fa-solid fa-bag-shopping"></i> <span>Remove Ads</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="recommend">
+        <i class="fa-regular fa-envelope"></i> <span>Recommend</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="settings">
+        <i class="fa-solid fa-gear"></i> <span>Settings</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="help">
+        <i class="fa-regular fa-circle-question"></i> <span>Help</span>
+      </div>
+      <div class="drawer-menu-item" data-drawer-action="exit">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span>Exit</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Full-Screen Live Preview Screen (Screenshots 4 & 5) -->
+  <div id="preview-overlay" role="dialog" aria-modal="true">
+    <div class="preview-header-bar">
+      <div class="preview-header-left">
+        <button id="preview-btn-back" class="preview-back-btn">
+          <i class="fa-solid fa-arrow-left"></i> <span>Back</span>
+        </button>
+        <div class="preview-title-info">
+          <div class="preview-main-title">Preview</div>
+          <div id="preview-filepath-text" class="preview-path-title">/storage/emulated/0/html reader.html</div>
+        </div>
+      </div>
+      <div class="preview-header-right">
+        <button id="preview-btn-toggle-theme" class="preview-tool-btn" title="Toggle Background (Dark/Light)">
+          <i class="fa-solid fa-circle-half-stroke"></i>
+        </button>
+        <button id="preview-btn-copy" class="preview-tool-btn" title="Copy Output HTML">
+          <i class="fa-regular fa-copy"></i>
+        </button>
+        <!-- Globe Icon: Opens in external browser window (Requested by user) -->
+        <button id="preview-btn-browser" class="preview-tool-btn" title="Open in External Browser">
+          <i class="fa-solid fa-globe"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-frame-container" id="preview-frame-container">
+      <iframe id="preview-iframe" sandbox="allow-scripts allow-modals allow-forms allow-same-origin"></iframe>
+      <div id="preview-non-html-box" style="display:none; padding:16px; overflow:auto; height:100%; font-family:monospace; white-space:pre-wrap;"></div>
+    </div>
+
+    <!-- Draggable Floating Tool Button (Screenshot 6: Gear with crossed wrench/screwdriver) -->
+    <div id="draggable-gear-btn" title="Drag me! Tap for preview console & inspection tools">
+      <i class="fa-solid fa-screwdriver-wrench"></i>
+    </div>
+  </div>
+
+  <!-- Settings Full Screen (Screenshot 9) -->
+  <div id="settings-screen" role="dialog" aria-modal="true">
+    <div class="settings-header">
+      <div class="settings-header-left">
+        <button id="settings-btn-back" class="settings-back-btn">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div class="settings-header-title">Settings</div>
+      </div>
+      <button id="settings-btn-dots" class="header-icon-btn" style="color:#374151;">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+      </button>
+
+      <!-- Settings 3-Dots Dropdown Menu -->
+      <div id="settings-dropdown-menu" class="custom-dropdown-menu" style="right:12px; top:48px; z-index:9999;">
+        <div class="dropdown-item" id="btn-settings-backup">
+          <i class="fa-solid fa-cloud-arrow-down" style="color:#2563eb;"></i> <span>Backup Data</span>
+        </div>
+        <div class="dropdown-item" id="btn-settings-restore">
+          <i class="fa-solid fa-cloud-arrow-up" style="color:#16a34a;"></i> <span>Restore Data</span>
+        </div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="btn-settings-reset">
+          <i class="fa-solid fa-rotate-left" style="color:#ef4444;"></i> <span>Reset to Default</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-scroll-content">
+      <!-- General Settings -->
+      <div class="settings-section-title">General Settings</div>
+
+      <div class="setting-item" id="opt-language">
+        <div class="setting-texts">
+          <div class="setting-name">Language</div>
+          <div class="setting-desc" id="lbl-language">Automatic (Default)</div>
+        </div>
+      </div>
+
+      <div class="setting-item" id="opt-encoding">
+        <div class="setting-texts">
+          <div class="setting-name">Default Encoding</div>
+          <div class="setting-desc">Default encoding when opening and creating files: UTF-8</div>
+        </div>
+      </div>
+
+      <div class="setting-item" id="opt-mini-toolbar">
+        <div class="setting-texts">
+          <div class="setting-name">Mini Toolbar</div>
+          <div class="setting-desc">Choose or reorder bottom toolbar items.</div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color:#9ca3af; font-size:13px;"></i>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Word Wrap</div>
+          <div class="setting-desc">Enable word wrap to fit screen width.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-word-wrap" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Folder Drawer</div>
+          <div class="setting-desc">Enable folder navigation drawer on main screen.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-folder-drawer" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Auto Indent</div>
+          <div class="setting-desc">Enable auto indentation for new lines.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-auto-indent" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Undo By Back Button</div>
+          <div class="setting-desc">Undo last modification using back button.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-undo-back">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- View Settings -->
+      <div class="settings-section-title">View Settings</div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Line Number</div>
+          <div class="setting-desc">Indicates whether to show line numbers.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-line-numbers" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item" id="opt-font-size">
+        <div class="setting-texts">
+          <div class="setting-name">Font Size</div>
+          <div class="setting-desc" id="lbl-font-size">Indicates the font size for text editing: 16sp.</div>
+        </div>
+      </div>
+
+      <!-- Look And Feel -->
+      <div class="settings-section-title">Look And Feel</div>
+
+      <div class="setting-item" id="opt-theme-select">
+        <div class="setting-texts">
+          <div class="setting-name">Theme</div>
+          <div class="setting-desc" id="lbl-theme-name">Monokai (Dark)</div>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-texts">
+          <div class="setting-name">Full Screen</div>
+          <div class="setting-desc">Launch the application in full screen mode.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-fullscreen">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mini Toolbar Customization Dialog (Screenshot 10) -->
+  <div id="mini-toolbar-modal-backdrop">
+    <div class="mini-toolbar-dialog" role="dialog" aria-modal="true">
+      <div class="dialog-header">
+        <div class="dialog-title-green">Mini Toolbar</div>
+      </div>
+      <div class="mini-toolbar-list" id="mini-toolbar-reorder-list">
+        <!-- Reorder items populated dynamically -->
+      </div>
+      <div class="dialog-actions">
+        <button id="btn-dialog-default" class="dialog-btn">DEFAULT</button>
+        <button id="btn-dialog-cancel" class="dialog-btn">CANCEL</button>
+        <button id="btn-dialog-ok" class="dialog-btn">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Internal Storage / File Manager Modal (Responsive Desktop & Mobile) -->
+  <div id="storage-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box" style="max-width:680px; width:95%; max-height:88vh; padding:16px; gap:10px;">
+      <div class="modal-title" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-folder-open" style="color:#2563eb;"></i>
+          <span>Internal Storage & Files</span>
+        </div>
+        <button id="btn-storage-close" style="background:transparent; border:none; color:#64748b; font-size:18px; cursor:pointer;" title="Close Explorer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Current Path Breadcrumb & Navigation -->
+      <div style="display:flex; align-items:center; justify-content:space-between; background:#f1f5f9; padding:8px 10px; border-radius:6px; font-size:12px; font-family:monospace; color:#334155; gap:6px;">
+        <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
+          <i class="fa-solid fa-folder-tree" style="color:#64748b;"></i>
+          <span id="storage-current-path" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">/storage/emulated/0</span>
+        </div>
+        <button id="btn-storage-up" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer; display:none; flex-shrink:0;">
+          <i class="fa-solid fa-arrow-up"></i> Up
+        </button>
+      </div>
+
+      <!-- Search & Filter Bar -->
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="position:relative; flex:1; min-width:180px;">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:12px;"></i>
+          <input type="text" id="storage-search-input" class="storage-search-input" placeholder="Search files or folders..." style="width:100%; padding:6px 10px 6px 30px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; outline:none;" />
+        </div>
+        <div id="storage-filter-chips" style="display:flex; gap:4px; overflow-x:auto;">
+          <button type="button" class="storage-chip active" data-filter="all">All</button>
+          <button type="button" class="storage-chip" data-filter="html">HTML</button>
+          <button type="button" class="storage-chip" data-filter="js">JS</button>
+          <button type="button" class="storage-chip" data-filter="css">CSS</button>
+          <button type="button" class="storage-chip" data-filter="folders">Folders</button>
+        </div>
+      </div>
+
+      <!-- Storage Action Bar (New File, New Folder, Save Current Tab Here, Import) -->
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <button id="btn-storage-new-file" class="m-btn m-btn-cancel" style="padding:6px 11px; font-size:12px;" title="Create new file in this folder">
+          <i class="fa-solid fa-file-circle-plus" style="color:#2563eb;"></i> + File
+        </button>
+        <button id="btn-storage-new-folder" class="m-btn m-btn-cancel" style="padding:6px 11px; font-size:12px;" title="Create new folder">
+          <i class="fa-solid fa-folder-plus" style="color:#f59e0b;"></i> + Folder
+        </button>
+        <button id="btn-storage-save-here" class="m-btn m-btn-primary" style="padding:6px 11px; font-size:12px; background:#16a34a;" title="Save currently open tab here">
+          <i class="fa-solid fa-floppy-disk"></i> Save Tab Here
+        </button>
+        <button id="btn-storage-import-file" class="m-btn m-btn-cancel" style="padding:6px 11px; font-size:12px;" title="Import file from device storage">
+          <i class="fa-solid fa-file-import" style="color:#8b5cf6;"></i> Import
+        </button>
+      </div>
+
+      <!-- File and Folder List -->
+      <div id="storage-file-list" style="max-height:340px; min-height:180px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:6px; display:flex; flex-direction:column; gap:6px; background:#ffffff;">
+        <!-- Entries rendered dynamically -->
+      </div>
+      <div id="storage-stats-info" style="font-size:11px; color:#64748b; text-align:right;"></div>
+    </div>
+  </div>
+
+  <!-- Restore Data Modal -->
+  <div id="restore-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box" style="max-width:400px; gap:12px;">
+      <div class="modal-title" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-cloud-arrow-up" style="color:#16a34a;"></i>
+          <span>Restore Backup Data</span>
+        </div>
+        <button id="btn-restore-close" style="background:transparent; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div style="font-size:13px; color:#475569;">
+        Choose how you would like to restore your files, virtual storage, and editor settings:
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <button id="btn-restore-file-btn" class="m-btn m-btn-primary" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+          <i class="fa-solid fa-file-import"></i> Upload Backup File (.json)
+        </button>
+        <button id="btn-restore-snapshot-btn" class="m-btn m-btn-cancel" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+          <i class="fa-solid fa-clock-rotate-left"></i> Restore from Local Snapshot
+        </button>
+        <button id="btn-restore-default-btn" class="m-btn m-btn-cancel" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; color:#ef4444;">
+          <i class="fa-solid fa-rotate-left"></i> Reset to Factory Defaults
+        </button>
+      </div>
+      <div id="restore-snapshot-info" style="font-size:11px; color:#64748b; text-align:center;"></div>
+    </div>
+  </div>
+
+  <!-- Recent Files Modal -->
+  <div id="recent-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box" style="max-width:420px; gap:10px;">
+      <div class="modal-title" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-clock-rotate-left" style="color:#2563eb;"></i>
+          <span>Recent Files</span>
+        </div>
+        <button id="btn-recent-close" style="background:transparent; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="recent-files-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+        <!-- Recent files rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookmarks Modal -->
+  <div id="bookmarks-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box" style="max-width:420px; gap:10px;">
+      <div class="modal-title" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-star" style="color:#eab308;"></i>
+          <span>Bookmarked Files</span>
+        </div>
+        <button id="btn-bookmarks-close" style="background:transparent; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="bookmarks-files-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+        <!-- Bookmarked files rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Storage Manager Modal -->
+  <div id="storage-mgr-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box" style="max-width:400px; gap:12px;">
+      <div class="modal-title" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-cloud" style="color:#0284c7;"></i>
+          <span>Storage Manager</span>
+        </div>
+        <button id="btn-storage-mgr-close" style="background:transparent; border:none; color:#64748b; font-size:18px; cursor:pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="storage-mgr-details" style="background:#f8fafc; padding:12px; border-radius:8px; font-size:13px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+        <!-- Stats populated dynamically -->
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btn-storage-mgr-backup" class="m-btn m-btn-primary" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:9px;">
+          <i class="fa-solid fa-download"></i> Export Full Backup (.json)
+        </button>
+        <button id="btn-storage-mgr-clear" class="m-btn m-btn-cancel" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:9px; color:#ef4444;">
+          <i class="fa-solid fa-trash-can"></i> Clear All Storage Cache
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden native file inputs for real device file import and settings restore -->
+  <input type="file" id="real-file-picker" style="display:none;" />
+  <input type="file" id="restore-file-input" accept=".json" style="display:none;" />
+
+  <!-- Rename / Save As Prompt Modal -->
+  <div id="input-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title" id="input-modal-title">Save As</div>
+      <input type="text" id="input-modal-field" class="modal-input" placeholder="filename.html" />
+      <div class="modal-btn-row">
+        <button id="input-modal-cancel" class="m-btn m-btn-cancel">Cancel</button>
+        <button id="input-modal-confirm" class="m-btn m-btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unsaved Changes Prompt Dialog -->
+  <div id="confirm-modal-backdrop" class="generic-modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title" id="confirm-modal-title">Unsaved Changes</div>
+      <div id="confirm-modal-body" style="font-size:14px; color:#4b5563;">Save changes before closing?</div>
+      <div class="modal-btn-row">
+        <button id="confirm-btn-discard" class="m-btn m-btn-cancel" style="color:#ef4444;">Don't Save</button>
+        <button id="confirm-btn-save" class="m-btn m-btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Wrapper -->
+  <div id="toast-wrap"></div>
+
+  <!-- Application Logic -->
+  <script>
+    (function () {
+      'use strict';
+
+      // ==========================================
+      // 1. Initial State & Configuration
+      // ==========================================
+      const STORAGE_TABS_KEY = 'deveditor_tabs_v2';
+      const STORAGE_SETTINGS_KEY = 'deveditor_settings_v2';
+      const STORAGE_TOOLBAR_KEY = 'deveditor_minitoolbar_v2';
+
+      const DEFAULT_TOOLBAR_ITEMS = [
+        { id: 'open', label: 'OPEN', icon: 'fa-folder', enabled: true },
+        { id: 'paste', label: 'PASTE', icon: 'fa-clipboard', enabled: true },
+        { id: 'undo', label: 'UNDO', icon: 'fa-rotate-left', enabled: true },
+        { id: 'redo', label: 'REDO', icon: 'fa-rotate-right', enabled: true },
+        { id: 'search', label: 'SEARCH', icon: 'fa-magnifying-glass', enabled: true },
+        { id: 'left', label: 'GO LEFT', icon: 'fa-arrow-left', enabled: true },
+        { id: 'right', label: 'GO RIGHT', icon: 'fa-arrow-right', enabled: true },
+        { id: 'up', label: 'GO UP', icon: 'fa-arrow-up', enabled: true },
+        { id: 'down', label: 'GO DOWN', icon: 'fa-arrow-down', enabled: true },
+        { id: 'save', label: 'SAVE', icon: 'fa-floppy-disk', enabled: true },
+        { id: 'close', label: 'CLOSE', icon: 'fa-xmark', enabled: true }
+      ];
+
+      const DEFAULT_CODE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevEditor Interactive Preview</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 32px 24px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 26px;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    p {
+      color: #64748b;
+      margin-bottom: 24px;
+      font-size: 15px;
+    }
+    .btn {
+      background: #22c55e;
+      color: #ffffff;
+      font-weight: 600;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 9999px;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello from DevEditor!</h1>
+    <p>Live interactive HTML preview.</p>
+    <button class="btn" onclick="alert('Button clicked!')">Tap Me</button>
+  </div>
+</body>
+</html>`;
+
+      let editor = null;
+      let isCtrlActive = false;
+
+      let STATE = {
+        tabs: [],
+        activeTabId: null,
+        toolbarItems: JSON.parse(JSON.stringify(DEFAULT_TOOLBAR_ITEMS)),
+        viewMode: localStorage.getItem('deveditor_view_mode') || (window.innerWidth >= 900 ? 'desktop' : 'mobile'),
+        isSplitViewOpen: true,
+        autoRunLivePreview: true,
+        splitRatio: parseFloat(localStorage.getItem('deveditor_split_ratio') || '50'),
+        viewportMode: 'fluid',
+        consoleLogs: [],
+        settings: {
+          wordWrap: true,
+          lineNumbers: true,
+          autoIndent: true,
+          undoByBack: false,
+          fontSize: 16,
+          theme: 'monokai',
+          fullScreen: false
+        }
+      };
+
+      // ==========================================
+      // 2. DOM Elements Cache
+      // ==========================================
+      const editorEl = document.getElementById('editor');
+      const tabBarEl = document.getElementById('tab-bar');
+      const actionBarEl = document.getElementById('action-bar');
+      const activeFilenameEl = document.getElementById('app-active-filename');
+      const fileStatsEl = document.getElementById('app-file-stats');
+
+      // Top Dropdown Menus (Screenshots 1 & 2)
+      const btnTopFolder = document.getElementById('btn-top-folder');
+      const folderDropdown = document.getElementById('folder-dropdown-menu');
+      const btnTopDots = document.getElementById('btn-top-dots');
+      const dotsDropdown = document.getElementById('dots-dropdown-menu');
+
+      // Mode Switcher Elements
+      const btnModeMobile = document.getElementById('btn-mode-mobile');
+      const btnModeDesktop = document.getElementById('btn-mode-desktop');
+
+      // Desktop Header Action Buttons
+      const btnDeskNew = document.getElementById('btn-desk-new');
+      const btnDeskOpen = document.getElementById('btn-desk-open');
+      const btnDeskSave = document.getElementById('btn-desk-save');
+      const btnDeskRun = document.getElementById('btn-desk-run');
+      const btnDeskSplit = document.getElementById('btn-desk-split');
+
+      // Desktop Split Preview Elements
+      const workspaceMain = document.getElementById('workspace-main');
+      const desktopSplitter = document.getElementById('desktop-splitter');
+      const desktopPreviewPane = document.getElementById('desktop-preview-pane');
+      const dpLiveIframe = document.getElementById('dp-live-iframe');
+      const dpNonHtmlBox = document.getElementById('dp-non-html-box');
+      const dpAutoRunBtn = document.getElementById('dp-auto-run-btn');
+      const dpRefreshBtn = document.getElementById('dp-refresh-btn');
+      const dpExternalBtn = document.getElementById('dp-external-btn');
+      const dpFullscreenBtn = document.getElementById('dp-fullscreen-btn');
+      const dpCloseBtn = document.getElementById('dp-close-btn');
+      const dpFrameWrapper = document.getElementById('dp-frame-wrapper');
+
+      // Viewport Switcher Elements
+      const dpVpFluid = document.getElementById('dp-vp-fluid');
+      const dpVpTablet = document.getElementById('dp-vp-tablet');
+      const dpVpMobile = document.getElementById('dp-vp-mobile');
+
+      // Live Console Logger Elements
+      const dpConsoleDrawer = document.getElementById('dp-console-drawer');
+      const dpConsoleHeaderToggle = document.getElementById('dp-console-header-toggle');
+      const dpConsoleCount = document.getElementById('dp-console-count');
+      const dpConsoleBody = document.getElementById('dp-console-body');
+      const dpConsoleClearBtn = document.getElementById('dp-console-clear-btn');
+      const dpConsoleToggleBtn = document.getElementById('dp-console-toggle-btn');
+
+      // Status Bar Elements
+      const statusCursorPos = document.getElementById('status-cursor-pos');
+      const statusCharCount = document.getElementById('status-char-count');
+      const statusLangBadge = document.getElementById('status-lang-badge');
+      const btnToggleQuickbar = document.getElementById('btn-toggle-quickbar');
+
+      // Drawer
+      const btnHamburger = document.getElementById('btn-hamburger');
+      const navDrawer = document.getElementById('nav-drawer');
+      const drawerBackdrop = document.getElementById('drawer-backdrop');
+
+      // Bottom Quick Bar & Ctrl
+      const ctrlToggleBtn = document.getElementById('ctrl-toggle-btn');
+      const dynamicKeysContainer = document.getElementById('dynamic-keys-container');
+      const btnActionRun = document.getElementById('btn-action-run');
+
+      // Selection Context Bubble
+      const selectionBubble = document.getElementById('selection-bubble');
+
+      // Preview Overlay
+      const previewOverlay = document.getElementById('preview-overlay');
+      const previewIframe = document.getElementById('preview-iframe');
+      const previewBackBtn = document.getElementById('preview-btn-back');
+      const previewBrowserBtn = document.getElementById('preview-btn-browser');
+      const previewCopyBtn = document.getElementById('preview-btn-copy');
+      const previewThemeBtn = document.getElementById('preview-btn-toggle-theme');
+      const previewFilepathText = document.getElementById('preview-filepath-text');
+      const draggableGearBtn = document.getElementById('draggable-gear-btn');
+
+      // Settings Screen & 3-Dots Dropdown
+      const settingsScreen = document.getElementById('settings-screen');
+      const settingsBackBtn = document.getElementById('settings-btn-back');
+      const settingsBtnDots = document.getElementById('settings-btn-dots');
+      const settingsDropdown = document.getElementById('settings-dropdown-menu');
+      const btnSettingsBackup = document.getElementById('btn-settings-backup');
+      const btnSettingsRestore = document.getElementById('btn-settings-restore');
+      const btnSettingsReset = document.getElementById('btn-settings-reset');
+
+      // Mini Toolbar Dialog
+      const miniToolbarBackdrop = document.getElementById('mini-toolbar-modal-backdrop');
+      const miniToolbarListEl = document.getElementById('mini-toolbar-reorder-list');
+      const btnDialogDefault = document.getElementById('btn-dialog-default');
+      const btnDialogCancel = document.getElementById('btn-dialog-cancel');
+      const btnDialogOk = document.getElementById('btn-dialog-ok');
+
+      // Internal Storage File Explorer Elements
+      const storageBackdrop = document.getElementById('storage-modal-backdrop');
+      const storageFileList = document.getElementById('storage-file-list');
+      const storageCurrentPathEl = document.getElementById('storage-current-path');
+      const storageStatsInfo = document.getElementById('storage-stats-info');
+      const storageSearchInput = document.getElementById('storage-search-input');
+      const storageFilterChips = document.getElementById('storage-filter-chips');
+      let currentStorageFilter = 'all';
+      let storageSearchQuery = '';
+
+      const btnStorageClose = document.getElementById('btn-storage-close');
+      const btnStorageUp = document.getElementById('btn-storage-up');
+      const btnStorageNew = document.getElementById('btn-storage-new-file');
+      const btnStorageNewFolder = document.getElementById('btn-storage-new-folder');
+      const btnStorageSaveHere = document.getElementById('btn-storage-save-here');
+      const btnStorageImport = document.getElementById('btn-storage-import-file');
+      const realFilePicker = document.getElementById('real-file-picker');
+      const restoreFileInput = document.getElementById('restore-file-input');
+
+      // Restore Modal Elements
+      const restoreModalBackdrop = document.getElementById('restore-modal-backdrop');
+      const btnRestoreFile = document.getElementById('btn-restore-file-btn');
+      const btnRestoreSnapshot = document.getElementById('btn-restore-snapshot-btn');
+      const btnRestoreDefault = document.getElementById('btn-restore-default-btn');
+      const btnRestoreClose = document.getElementById('btn-restore-close');
+      const restoreSnapshotInfo = document.getElementById('restore-snapshot-info');
+
+      // Recent Files Modal Elements
+      const recentModalBackdrop = document.getElementById('recent-modal-backdrop');
+      const recentFilesList = document.getElementById('recent-files-list');
+      const btnRecentClose = document.getElementById('btn-recent-close');
+
+      // Bookmarks Modal Elements
+      const bookmarksModalBackdrop = document.getElementById('bookmarks-modal-backdrop');
+      const bookmarksFilesList = document.getElementById('bookmarks-files-list');
+      const btnBookmarksClose = document.getElementById('btn-bookmarks-close');
+
+      // Storage Manager Modal Elements
+      const storageMgrModalBackdrop = document.getElementById('storage-mgr-modal-backdrop');
+      const storageMgrDetails = document.getElementById('storage-mgr-details');
+      const btnStorageMgrBackup = document.getElementById('btn-storage-mgr-backup');
+      const btnStorageMgrClear = document.getElementById('btn-storage-mgr-clear');
+      const btnStorageMgrClose = document.getElementById('btn-storage-mgr-close');
+
+      // Common Input & Confirm Modals
+      const inputModalBackdrop = document.getElementById('input-modal-backdrop');
+      const inputModalTitle = document.getElementById('input-modal-title');
+      const inputModalField = document.getElementById('input-modal-field');
+      const inputModalCancel = document.getElementById('input-modal-cancel');
+      const inputModalConfirm = document.getElementById('input-modal-confirm');
+      let inputModalCallback = null;
+
+      const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+      const confirmBtnDiscard = document.getElementById('confirm-btn-discard');
+      const confirmBtnSave = document.getElementById('confirm-btn-save');
+      let confirmDiscardCallback = null;
+      let confirmSaveCallback = null;
+
+      // ==========================================
+      // 3. Resilient Ace Editor Initialization
+      // ==========================================
+      function loadScriptAsync(src) {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          s.onload = () => resolve();
+          s.onerror = (e) => reject(e);
+          document.head.appendChild(s);
+        });
+      }
+
+      function ensureAceLoaded(callback) {
+        if (typeof ace !== 'undefined') {
+          callback();
+          return;
+        }
+
+        editorEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:14px;gap:12px;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:28px;color:#38bdf8;"></i>
+            <span>Loading DevEditor interface...</span>
+          </div>
+        `;
+
+        loadScriptAsync('https://cdn.jsdelivr.net/npm/ace-builds@1.32.7/src-min-noconflict/ace.js')
+          .then(() => {
+            if (typeof ace !== 'undefined') {
+              ace.config.set('basePath', 'https://cdn.jsdelivr.net/npm/ace-builds@1.32.7/src-min-noconflict/');
+              callback();
+            } else {
+              throw new Error('Ace not found');
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to load Ace:', err);
+            editorEl.innerHTML = `
+              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#f87171;font-size:14px;gap:14px;padding:24px;text-align:center;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:32px;"></i>
+                <span>Unable to load editor library. Check internet connection.</span>
+                <button type="button" onclick="window.location.reload()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+                  Retry
+                </button>
+              </div>
+            `;
+          });
+      }
+
+      function initEditor() {
+        ensureAceLoaded(() => {
+          editorEl.innerHTML = '';
+          if (!ace.config.get('basePath')) {
+            ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/');
+          }
+
+          editor = ace.edit(editorEl);
+          editor.setTheme('ace/theme/' + STATE.settings.theme);
+          editor.session.setMode('ace/mode/html');
+          editor.setFontSize(STATE.settings.fontSize);
+          editor.session.setUseWrapMode(STATE.settings.wordWrap);
+          editor.renderer.setShowGutter(STATE.settings.lineNumbers);
+          editor.setShowPrintMargin(false);
+          editor.session.setTabSize(2);
+          editor.session.setUseSoftTabs(true);
+          editor.renderer.setScrollMargin(10, 10);
+          editor.setHighlightActiveLine(true);
+
+          // Change listeners for stats and dirty state
+          editor.session.on('change', () => {
+            updateStats();
+            markActiveTabDirty();
+            if (STATE.autoRunLivePreview && STATE.viewMode === 'desktop' && STATE.isSplitViewOpen) {
+              debounceLivePreview();
+            }
+          });
+
+          // Text selection bubble trigger
+          editor.selection.on('changeSelection', handleSelectionChange);
+          editor.selection.on('changeCursor', updateCursorStatus);
+
+          // Keyboard listeners for Ctrl modifier
+          setupKeyboardShortcuts();
+
+          // Initialize tabs and files
+          initTabs();
+          renderActionBar();
+          renderQuickToolbar();
+          setupDraggableGear();
+
+          // Initialize Desktop & Responsive mode systems
+          initDesktopAndMobileModes();
+        });
+      }
+
+      // ==========================================
+      // 4. Tab & File Management
+      // ==========================================
+      function initTabs() {
+        const stored = loadFromStorage(STORAGE_TABS_KEY);
+        if (stored && stored.length > 0) {
+          STATE.tabs = stored;
+          switchTab(STATE.tabs[0].id);
+        } else {
+          // Create default tabs matching Screenshot 2: untitled and html reader.html
+          createNewTab('untitled', DEFAULT_CODE);
+          createNewTab('html reader.html', DEFAULT_CODE);
+          switchTab(STATE.tabs[0].id);
+        }
+      }
+
+      function createNewTab(name, content = '') {
+        const id = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        const newTab = {
+          id,
+          name: name || 'untitled',
+          content: content,
+          isDirty: false,
+          language: detectLanguage(name)
+        };
+        STATE.tabs.push(newTab);
+        saveTabsToStorage();
+        renderTabs();
+        return newTab;
+      }
+
+      function renderTabs() {
+        const tabsContainer = document.getElementById('tab-bar');
+        const addBtn = document.getElementById('btn-add-tab');
+
+        // Remove old tab elements (keep addBtn)
+        const oldTabs = tabsContainer.querySelectorAll('.editor-tab');
+        oldTabs.forEach(t => t.remove());
+
+        STATE.tabs.forEach((tab) => {
+          const tabEl = document.createElement('div');
+          tabEl.className = 'editor-tab' + (tab.id === STATE.activeTabId ? ' active' : '') + (tab.isDirty ? ' is-dirty' : '');
+          tabEl.innerHTML = `
+            <span class="tab-dirty">*</span>
+            <span class="tab-name">${escapeHtml(tab.name)}</span>
+            <span class="tab-close-icon" title="Close"><i class="fa-solid fa-xmark"></i></span>
+          `;
+
+          // Tab click to switch
+          tabEl.addEventListener('click', (e) => {
+            if (e.target.closest('.tab-close-icon')) {
+              e.stopPropagation();
+              promptCloseTab(tab.id);
+            } else {
+              switchTab(tab.id);
+            }
+          });
+
+          tabsContainer.insertBefore(tabEl, addBtn);
+        });
+
+        // Update header titles
+        const current = getActiveTab();
+        if (current) {
+          activeFilenameEl.textContent = (current.isDirty ? '*' : '') + current.name;
+          previewFilepathText.textContent = '/storage/emulated/0/' + current.name;
+        }
+      }
+
+      function switchTab(id) {
+        const tab = STATE.tabs.find(t => t.id === id);
+        if (!tab) return;
+
+        // Save current tab content before switching
+        const prevTab = getActiveTab();
+        if (prevTab && editor) {
+          prevTab.content = editor.getValue();
+        }
+
+        STATE.activeTabId = id;
+        renderTabs();
+
+        if (editor) {
+          editor.session.setMode('ace/mode/' + (tab.language || 'html'));
+          editor.setValue(tab.content || '', -1);
+          editor.clearSelection();
+          updateStats();
+        }
+      }
+
+      function promptCloseTab(id) {
+        const tab = STATE.tabs.find(t => t.id === id);
+        if (!tab) return;
+
+        if (tab.isDirty) {
+          confirmModalBackdrop.classList.add('active');
+          confirmDiscardCallback = () => {
+            confirmModalBackdrop.classList.remove('active');
+            closeTab(id);
+          };
+          confirmSaveCallback = () => {
+            confirmModalBackdrop.classList.remove('active');
+            saveCurrentFile();
+            closeTab(id);
+          };
+        } else {
+          closeTab(id);
+        }
+      }
+
+      function closeTab(id) {
+        if (STATE.tabs.length <= 1) {
+          // If last tab, reset to untitled
+          STATE.tabs[0].name = 'untitled';
+          STATE.tabs[0].content = '';
+          STATE.tabs[0].isDirty = false;
+          if (editor) editor.setValue('', -1);
+          renderTabs();
+          return;
+        }
+
+        const idx = STATE.tabs.findIndex(t => t.id === id);
+        STATE.tabs = STATE.tabs.filter(t => t.id !== id);
+        if (STATE.activeTabId === id) {
+          const nextTab = STATE.tabs[Math.max(0, idx - 1)];
+          switchTab(nextTab.id);
+        } else {
+          renderTabs();
+        }
+        saveTabsToStorage();
+      }
+
+      function markActiveTabDirty() {
+        const current = getActiveTab();
+        if (current && !current.isDirty) {
+          current.isDirty = true;
+          renderTabs();
+        }
+      }
+
+      function getActiveTab() {
+        return STATE.tabs.find(t => t.id === STATE.activeTabId);
+      }
+
+      function updateStats() {
+        if (!editor) return;
+        const code = editor.getValue();
+        const chars = code.length;
+        const lines = editor.session.getLength();
+        fileStatsEl.textContent = chars + ' chars, ' + lines + ' lines';
+        if (statusCharCount) {
+          statusCharCount.textContent = chars + ' chars, ' + lines + ' lines';
+        }
+        const activeTab = getActiveTab();
+        if (statusLangBadge && activeTab) {
+          statusLangBadge.textContent = (activeTab.language || 'html').toUpperCase();
+        }
+      }
+
+      function updateCursorStatus() {
+        if (!editor || !statusCursorPos) return;
+        const pos = editor.getCursorPosition();
+        statusCursorPos.innerHTML = `<i class="fa-regular fa-compass"></i> Ln ${pos.row + 1}, Col ${pos.column + 1}`;
+      }
+
+      function detectLanguage(filename) {
+        const ext = (filename || '').split('.').pop().toLowerCase();
+        const map = {
+          html: 'html', htm: 'html', xml: 'xml', js: 'javascript', css: 'css',
+          py: 'python', cpp: 'c_cpp', c: 'c_cpp', java: 'java', json: 'json'
+        };
+        return map[ext] || 'html';
+      }
+
+      function saveTabsToStorage() {
+        const current = getActiveTab();
+        if (current && editor) {
+          current.content = editor.getValue();
+        }
+        localStorage.setItem(STORAGE_TABS_KEY, JSON.stringify(STATE.tabs));
+      }
+
+      // ==========================================
+      // 5. Action Bar (Bottom Toolbar with Box Buttons)
+      // ==========================================
+      function renderActionBar() {
+        const container = document.getElementById('action-bar-items');
+        if (!container) return;
+        container.innerHTML = '';
+        STATE.toolbarItems.filter(item => item.enabled).forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'action-bar-btn';
+          btn.setAttribute('data-action', item.id);
+          btn.title = item.label;
+          btn.innerHTML = `<i class="fa-solid ${item.icon}"></i>`;
+          btn.addEventListener('click', () => handleActionBarAction(item.id));
+          container.appendChild(btn);
+        });
+      }
+
+      function handleActionBarAction(actionId) {
+        if (!editor) return;
+
+        switch (actionId) {
+          case 'open':
+            openStorageModal();
+            break;
+          case 'paste':
+            pasteFromClipboard();
+            break;
+          case 'undo':
+            editor.undo();
+            break;
+          case 'redo':
+            editor.redo();
+            break;
+          case 'search':
+            editor.execCommand('find');
+            break;
+          case 'left':
+            editor.navigateLeft(1);
+            editor.focus();
+            break;
+          case 'right':
+            editor.navigateRight(1);
+            editor.focus();
+            break;
+          case 'up':
+            editor.navigateUp(1);
+            editor.focus();
+            break;
+          case 'down':
+            editor.navigateDown(1);
+            editor.focus();
+            break;
+          case 'save':
+            saveCurrentFile();
+            break;
+          case 'close':
+            promptCloseTab(STATE.activeTabId);
+            break;
+        }
+      }
+
+      // Robust Copy & Paste Implementation
+      function copyToClipboard(text) {
+        if (!text && editor) {
+          text = editor.getSelectedText() || editor.getValue();
+        }
+        if (!text) {
+          showToast('Nothing to copy', 'info');
+          return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied to clipboard', 'success');
+          }).catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          const ok = document.execCommand('copy');
+          if (ok) showToast('Copied to clipboard', 'success');
+          else showToast('Could not copy', 'error');
+        } catch (e) {
+          showToast('Could not copy', 'error');
+        }
+        document.body.removeChild(ta);
+      }
+
+      async function pasteFromClipboard() {
+        if (!editor) return;
+        let pasted = false;
+
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+              editor.insert(text);
+              showToast('Pasted from clipboard', 'success');
+              pasted = true;
+              return;
+            }
+          } catch (err) {
+            // Clipboard read permission prompt or rejection
+          }
+        }
+
+        if (!pasted) {
+          const text = prompt('Paste your text here:');
+          if (text !== null && text !== '') {
+            editor.insert(text);
+            showToast('Pasted successfully', 'success');
+          }
+        }
+      }
+
+      function saveCurrentFile() {
+        const current = getActiveTab();
+        if (!current || !editor) return;
+
+        current.content = editor.getValue();
+        current.isDirty = false;
+        saveTabsToStorage();
+        if (typeof fsAddOrUpdateFile === 'function') {
+          fsAddOrUpdateFile(currentFsPath || ROOT_PATH, current.name, current.content);
+        }
+        renderTabs();
+        showToast('Saved ' + current.name, 'success');
+
+        // Also offer file download to device's Download folder
+        triggerFileDownload(current.name, current.content);
+      }
+
+      function triggerFileDownload(filename, text) {
+        try {
+          const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // ==========================================
+      // 6. Bottom Quick Toolbar & [Ctrl] Modifier
+      // ==========================================
+      const SYMBOL_KEYS = [
+        { label: 'Func', action: 'func', isSpecial: true },
+        { label: 'Tab', action: 'tab', isSpecial: true },
+        { insert: '<' }, { insert: '>' },
+        { insert: '{' }, { insert: '}' },
+        { insert: '[' }, { insert: ']' },
+        { insert: '(' }, { insert: ')' },
+        { insert: ';' }, { insert: ':' },
+        { insert: '"' }, { insert: "'" },
+        { insert: '=' }, { insert: '+' },
+        { insert: '-' }, { insert: '*' },
+        { insert: '/' }, { insert: '$' },
+        { insert: '!' }, { insert: '&' },
+        { insert: '|' }, { insert: '_' },
+        { insert: '.' }, { insert: '%' },
+        { insert: '?' }, { insert: '#' },
+        { insert: '@' }, { insert: '=>' },
+        { insert: '//' }
+      ];
+
+      const CTRL_SHORTCUT_KEYS = [
+        { label: 'Select All (A)', action: 'ctrl_a' },
+        { label: 'Cut (X)', action: 'ctrl_x' },
+        { label: 'Copy (C)', action: 'ctrl_c' },
+        { label: 'Paste (V)', action: 'ctrl_v' },
+        { label: 'Save (S)', action: 'ctrl_s' },
+        { label: 'Undo (Z)', action: 'ctrl_z' },
+        { label: 'Redo (Y)', action: 'ctrl_y' },
+        { label: 'Find (F)', action: 'ctrl_f' },
+        { label: 'Comment (/)', action: 'ctrl_comment' },
+        { label: 'Go Line (G)', action: 'ctrl_g' }
+      ];
+
+      ctrlToggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        isCtrlActive = !isCtrlActive;
+        if (isCtrlActive) {
+          ctrlToggleBtn.classList.add('active-ctrl');
+          showToast('Ctrl Active: Shortcuts shown', 'info');
+        } else {
+          ctrlToggleBtn.classList.remove('active-ctrl');
+        }
+        renderQuickToolbar();
+        editor.focus();
+      });
+
+      function renderQuickToolbar() {
+        dynamicKeysContainer.innerHTML = '';
+
+        if (isCtrlActive) {
+          // Show shortcut buttons when Ctrl is active
+          CTRL_SHORTCUT_KEYS.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quick-key';
+            btn.style.backgroundColor = '#1e3a8a';
+            btn.style.color = '#93c5fd';
+            btn.style.fontSize = '12px';
+            btn.style.padding = '0 10px';
+            btn.textContent = item.label;
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              handleCtrlShortcut(item.action);
+              editor.focus();
+            });
+            dynamicKeysContainer.appendChild(btn);
+          });
+        } else {
+          // Show normal symbols
+          SYMBOL_KEYS.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quick-key' + (item.isSpecial ? ' text-label' : '');
+            btn.textContent = item.label || item.insert;
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (item.action === 'func') {
+                insertFuncTemplate();
+              } else if (item.action === 'tab') {
+                editor.indent();
+              } else if (item.insert) {
+                editor.insert(item.insert);
+              }
+              editor.focus();
+            });
+            dynamicKeysContainer.appendChild(btn);
+          });
+        }
+      }
+
+      function handleCtrlShortcut(action) {
+        if (!editor) return;
+
+        switch (action) {
+          case 'ctrl_a':
+            editor.selectAll();
+            break;
+          case 'ctrl_x':
+            document.execCommand('cut');
+            break;
+          case 'ctrl_c':
+            document.execCommand('copy');
+            showToast('Copied to clipboard');
+            break;
+          case 'ctrl_v':
+            pasteFromClipboard();
+            break;
+          case 'ctrl_s':
+            saveCurrentFile();
+            break;
+          case 'ctrl_z':
+            editor.undo();
+            break;
+          case 'ctrl_y':
+            editor.redo();
+            break;
+          case 'ctrl_f':
+            editor.execCommand('find');
+            break;
+          case 'ctrl_comment':
+            editor.toggleCommentLines();
+            break;
+          case 'ctrl_g':
+            editor.execCommand('gotoline');
+            break;
+        }
+
+        // Deactivate Ctrl after action for smooth workflow
+        isCtrlActive = false;
+        ctrlToggleBtn.classList.remove('active-ctrl');
+        renderQuickToolbar();
+      }
+
+      function insertFuncTemplate() {
+        const current = getActiveTab();
+        const lang = current ? current.language : 'html';
+        if (lang === 'python') {
+          editor.insert('def my_function():\n    pass\n');
+        } else if (lang === 'c_cpp' || lang === 'java') {
+          editor.insert('void processData() {\n    \n}\n');
+        } else {
+          editor.insert('function myFunction() {\n  \n}\n');
+        }
+      }
+
+      function setupKeyboardShortcuts() {
+        window.addEventListener('keydown', (e) => {
+          const isCtrl = e.ctrlKey || e.metaKey;
+          const key = e.key.toLowerCase();
+
+          // 1. Physical Ctrl / Cmd Shortcuts for Desktop Developers
+          if (isCtrl) {
+            if (key === 's') {
+              e.preventDefault();
+              handleFolderAction('save');
+              return;
+            }
+            if (key === 'enter') {
+              e.preventDefault();
+              if (STATE.viewMode === 'desktop' && STATE.isSplitViewOpen) {
+                updateDesktopPreview();
+                showToast('Live preview updated', 'success');
+              } else {
+                openLivePreview();
+              }
+              return;
+            }
+            if (key === 'o') {
+              e.preventDefault();
+              openStorageExplorer();
+              return;
+            }
+            if (key === 'n') {
+              e.preventDefault();
+              handleFolderAction('new');
+              return;
+            }
+            if (key === 'b') {
+              e.preventDefault();
+              toggleSplitPreview();
+              return;
+            }
+            if (key === 'f') {
+              e.preventDefault();
+              if (editor) editor.execCommand('find');
+              return;
+            }
+            if (key === '/') {
+              e.preventDefault();
+              if (editor) editor.toggleCommentLines();
+              return;
+            }
+          }
+
+          // 2. Escape closes all open modals, drawers, and dropdowns
+          if (e.key === 'Escape') {
+            closeAllModalsAndMenus();
+            return;
+          }
+
+          // 3. Virtual On-Screen [Ctrl] button shortcuts (for mobile touch typing)
+          if (isCtrlActive && !isCtrl) {
+            if (key === 'a') { e.preventDefault(); handleCtrlShortcut('ctrl_a'); }
+            else if (key === 'x') { e.preventDefault(); handleCtrlShortcut('ctrl_x'); }
+            else if (key === 'c') { e.preventDefault(); handleCtrlShortcut('ctrl_c'); }
+            else if (key === 'v') { e.preventDefault(); handleCtrlShortcut('ctrl_v'); }
+            else if (key === 's') { e.preventDefault(); handleCtrlShortcut('ctrl_s'); }
+            else if (key === 'z') { e.preventDefault(); handleCtrlShortcut('ctrl_z'); }
+            else if (key === 'y') { e.preventDefault(); handleCtrlShortcut('ctrl_y'); }
+            else if (key === 'f') { e.preventDefault(); handleCtrlShortcut('ctrl_f'); }
+          }
+        });
+      }
+
+      // ==========================================
+      // 7. Selection Context Bubble (Screenshot 7)
+      // ==========================================
+      function handleSelectionChange() {
+        if (!editor) return;
+        const selectedText = editor.getSelectedText();
+        if (selectedText && selectedText.length > 0) {
+          const cursor = editor.getCursorPosition();
+          const screenPos = editor.renderer.textToScreenCoordinates(cursor.row, cursor.column);
+
+          selectionBubble.style.left = Math.max(120, Math.min(window.innerWidth - 120, screenPos.pageX)) + 'px';
+          selectionBubble.style.top = Math.max(90, screenPos.pageY - 20) + 'px';
+          selectionBubble.classList.add('show');
+        } else {
+          selectionBubble.classList.remove('show');
+        }
+      }
+
+      document.getElementById('bubble-select-all').addEventListener('click', () => {
+        editor.selectAll();
+      });
+      document.getElementById('bubble-cut').addEventListener('click', () => {
+        const text = editor.getSelectedText();
+        if (text) {
+          copyToClipboard(text);
+          editor.insert('');
+          showToast('Cut to clipboard');
+        }
+        selectionBubble.classList.remove('show');
+      });
+      document.getElementById('bubble-copy').addEventListener('click', () => {
+        const text = editor.getSelectedText();
+        copyToClipboard(text);
+        selectionBubble.classList.remove('show');
+      });
+      document.getElementById('bubble-paste').addEventListener('click', () => {
+        pasteFromClipboard();
+        selectionBubble.classList.remove('show');
+      });
+      document.getElementById('bubble-more').addEventListener('click', () => {
+        editor.toggleCommentLines();
+        selectionBubble.classList.remove('show');
+      });
+
+      // ==========================================
+      // 8. Live Preview & Draggable Gear (Screenshots 4, 5, 6)
+      // ==========================================
+      function openLivePreview() {
+        if (!editor) return;
+        const code = editor.getValue();
+        const current = getActiveTab();
+        const lang = current ? current.language : 'html';
+
+        previewFilepathText.textContent = '/storage/emulated/0/' + (current ? current.name : 'index.html');
+
+        if (lang === 'html' || lang === 'xml') {
+          previewIframe.style.display = 'block';
+          document.getElementById('preview-non-html-box').style.display = 'none';
+          previewIframe.srcdoc = code;
+        } else {
+          previewIframe.style.display = 'none';
+          const nonHtmlBox = document.getElementById('preview-non-html-box');
+          nonHtmlBox.style.display = 'block';
+          nonHtmlBox.innerHTML = `
+            <div style="background:#1e1e1e;color:#e2e8f0;padding:14px;border-radius:8px;font-size:13px;line-height:1.5;">
+              <span style="color:#4ade80;">[DevEditor Sandbox Output]</span><br/>
+              &gt; Executing in browser preview environment...<br/><br/>
+              <pre style="color:#f8f8f2;">${escapeHtml(code)}</pre>
+            </div>
+          `;
+        }
+
+        previewOverlay.classList.add('active');
+        window.history.pushState({ modal: 'preview' }, '');
+      }
+
+      previewBackBtn.addEventListener('click', () => {
+        closePreview();
+      });
+
+      function closePreview() {
+        previewOverlay.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'preview') {
+          window.history.back();
+        }
+      }
+
+      // Open in External Browser Window / Device Browser (Globe Icon in Screenshot 5)
+      previewBrowserBtn.addEventListener('click', () => {
+        if (!editor) return;
+        const code = editor.getValue();
+        const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        const win = window.open(blobUrl, '_blank');
+        if (!win) {
+          triggerFileDownload('preview.html', code);
+          showToast('Downloaded preview file to open in your browser', 'info');
+        } else {
+          showToast('Opened in external browser tab', 'success');
+        }
+      });
+
+      previewCopyBtn.addEventListener('click', () => {
+        if (!editor) return;
+        navigator.clipboard.writeText(editor.getValue()).then(() => {
+          showToast('HTML copied to clipboard');
+        });
+      });
+
+      previewThemeBtn.addEventListener('click', () => {
+        const frameCont = document.getElementById('preview-frame-container');
+        if (frameCont.style.backgroundColor === 'rgb(30, 30, 30)') {
+          frameCont.style.backgroundColor = '#ffffff';
+        } else {
+          frameCont.style.backgroundColor = '#1e1e1e';
+        }
+      });
+
+      // Draggable Floating Gear/Wrench Button (Screenshot 6)
+      function setupDraggableGear() {
+        let isDragging = false;
+        let startX, startY, origLeft, origTop;
+
+        draggableGearBtn.addEventListener('pointerdown', (e) => {
+          isDragging = false;
+          startX = e.clientX;
+          startY = e.clientY;
+          const rect = draggableGearBtn.getBoundingClientRect();
+          origLeft = rect.left;
+          origTop = rect.top;
+          draggableGearBtn.setPointerCapture(e.pointerId);
+        });
+
+        draggableGearBtn.addEventListener('pointermove', (e) => {
+          if (e.buttons === 0) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+            isDragging = true;
+            draggableGearBtn.style.left = (origLeft + dx) + 'px';
+            draggableGearBtn.style.top = (origTop + dy) + 'px';
+            draggableGearBtn.style.right = 'auto';
+            draggableGearBtn.style.bottom = 'auto';
+          }
+        });
+
+        draggableGearBtn.addEventListener('pointerup', () => {
+          if (!isDragging) {
+            // Tapped! Open Preview Console / Inspector options
+            showToast('Preview Inspector Active: Console, Responsive Viewport ready');
+          }
+        });
+      }
+
+      // ==========================================
+      // 8B. Desktop IDE Mode & Responsive Systems
+      // ==========================================
+      let livePreviewTimeout = null;
+
+      function initDesktopAndMobileModes() {
+        // Mode Switcher Buttons
+        if (btnModeMobile) {
+          btnModeMobile.addEventListener('click', () => setViewMode('mobile'));
+        }
+        if (btnModeDesktop) {
+          btnModeDesktop.addEventListener('click', () => setViewMode('desktop'));
+        }
+
+        // Desktop Header Action Buttons
+        if (btnDeskNew) {
+          btnDeskNew.addEventListener('click', () => handleFolderAction('new'));
+        }
+        if (btnDeskOpen) {
+          btnDeskOpen.addEventListener('click', openStorageExplorer);
+        }
+        if (btnDeskSave) {
+          btnDeskSave.addEventListener('click', () => handleFolderAction('save'));
+        }
+        if (btnDeskRun) {
+          btnDeskRun.addEventListener('click', () => {
+            if (STATE.viewMode === 'desktop' && STATE.isSplitViewOpen) {
+              updateDesktopPreview();
+              showToast('Preview updated', 'success');
+            } else {
+              openLivePreview();
+            }
+          });
+        }
+        if (btnDeskSplit) {
+          btnDeskSplit.addEventListener('click', () => toggleSplitPreview());
+        }
+
+        // Status Bar Quick Symbols Toggle
+        if (btnToggleQuickbar) {
+          btnToggleQuickbar.addEventListener('click', () => {
+            const quickBar = document.getElementById('bottom-quick-bar');
+            if (quickBar) {
+              quickBar.classList.toggle('desktop-minimized');
+              btnToggleQuickbar.classList.toggle('active', !quickBar.classList.contains('desktop-minimized'));
+              if (editor) setTimeout(() => editor.resize(), 50);
+            }
+          });
+        }
+
+        // Window resize responsive behavior
+        window.addEventListener('resize', () => {
+          if (!localStorage.getItem('deveditor_view_mode')) {
+            if (window.innerWidth >= 900 && STATE.viewMode !== 'desktop') {
+              setViewMode('desktop');
+            } else if (window.innerWidth < 900 && STATE.viewMode !== 'mobile') {
+              setViewMode('mobile');
+            }
+          }
+          if (editor) editor.resize();
+        });
+
+        // Initialize splitter, preview handlers, and initial view mode
+        setupDesktopSplitter();
+        setupDesktopPreview();
+        setViewMode(STATE.viewMode);
+      }
+
+      function setViewMode(mode) {
+        STATE.viewMode = mode;
+        localStorage.setItem('deveditor_view_mode', mode);
+        const container = document.getElementById('app-container');
+
+        if (mode === 'desktop') {
+          container.classList.remove('mobile-mode');
+          container.classList.add('desktop-mode');
+          if (btnModeDesktop) btnModeDesktop.classList.add('active');
+          if (btnModeMobile) btnModeMobile.classList.remove('active');
+          toggleSplitPreview(true);
+        } else {
+          container.classList.remove('desktop-mode');
+          container.classList.add('mobile-mode');
+          if (btnModeMobile) btnModeMobile.classList.add('active');
+          if (btnModeDesktop) btnModeDesktop.classList.remove('active');
+          toggleSplitPreview(false);
+        }
+
+        updateStats();
+        updateCursorStatus();
+        if (editor) {
+          setTimeout(() => editor.resize(), 60);
+        }
+      }
+
+      function toggleSplitPreview(forceState) {
+        if (forceState !== undefined) {
+          STATE.isSplitViewOpen = !!forceState;
+        } else {
+          STATE.isSplitViewOpen = !STATE.isSplitViewOpen;
+        }
+
+        const editorCont = document.getElementById('editor-container');
+
+        if (STATE.isSplitViewOpen && STATE.viewMode === 'desktop') {
+          if (desktopSplitter) desktopSplitter.style.display = 'flex';
+          if (desktopPreviewPane) desktopPreviewPane.style.display = 'flex';
+          if (btnDeskSplit) btnDeskSplit.classList.add('active');
+
+          const ratio = STATE.splitRatio || 50;
+          if (editorCont) {
+            editorCont.style.width = ratio + '%';
+            editorCont.style.flex = 'none';
+          }
+          if (desktopPreviewPane) {
+            desktopPreviewPane.style.width = (100 - ratio) + '%';
+            desktopPreviewPane.style.flex = 'none';
+          }
+          updateDesktopPreview();
+        } else {
+          if (desktopSplitter) desktopSplitter.style.display = 'none';
+          if (desktopPreviewPane) desktopPreviewPane.style.display = 'none';
+          if (btnDeskSplit) btnDeskSplit.classList.remove('active');
+
+          if (editorCont) {
+            editorCont.style.width = '100%';
+            editorCont.style.flex = '1';
+          }
+        }
+
+        if (editor) {
+          setTimeout(() => editor.resize(), 50);
+        }
+      }
+
+      function setupDesktopSplitter() {
+        if (!desktopSplitter || !workspaceMain) return;
+        const editorCont = document.getElementById('editor-container');
+        let isDragging = false;
+
+        desktopSplitter.addEventListener('pointerdown', (e) => {
+          if (STATE.viewMode !== 'desktop' || !STATE.isSplitViewOpen) return;
+          isDragging = true;
+          desktopSplitter.setPointerCapture(e.pointerId);
+          desktopSplitter.classList.add('dragging');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          if (desktopPreviewPane) desktopPreviewPane.style.pointerEvents = 'none';
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (!isDragging) return;
+          const rect = workspaceMain.getBoundingClientRect();
+          const offsetX = e.clientX - rect.left;
+          const minW = 260;
+          const maxW = rect.width - 260;
+          if (offsetX >= minW && offsetX <= maxW) {
+            const ratio = (offsetX / rect.width) * 100;
+            STATE.splitRatio = ratio;
+            localStorage.setItem('deveditor_split_ratio', ratio.toString());
+
+            if (editorCont) {
+              editorCont.style.width = ratio + '%';
+              editorCont.style.flex = 'none';
+            }
+            if (desktopPreviewPane) {
+              desktopPreviewPane.style.width = (100 - ratio) + '%';
+              desktopPreviewPane.style.flex = 'none';
+            }
+            if (editor) editor.resize();
+          }
+        });
+
+        window.addEventListener('pointerup', () => {
+          if (isDragging) {
+            isDragging = false;
+            desktopSplitter.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (desktopPreviewPane) desktopPreviewPane.style.pointerEvents = '';
+            if (editor) editor.resize();
+          }
+        });
+      }
+
+      function setupDesktopPreview() {
+        // Auto-run toggle
+        if (dpAutoRunBtn) {
+          dpAutoRunBtn.addEventListener('click', () => {
+            STATE.autoRunLivePreview = !STATE.autoRunLivePreview;
+            dpAutoRunBtn.classList.toggle('active', STATE.autoRunLivePreview);
+            showToast('Auto-refresh ' + (STATE.autoRunLivePreview ? 'Enabled' : 'Disabled'));
+            if (STATE.autoRunLivePreview) updateDesktopPreview();
+          });
+        }
+
+        // Refresh button
+        if (dpRefreshBtn) {
+          dpRefreshBtn.addEventListener('click', () => {
+            updateDesktopPreview();
+            showToast('Preview refreshed');
+          });
+        }
+
+        // External browser tab
+        if (dpExternalBtn) {
+          dpExternalBtn.addEventListener('click', () => {
+            if (!editor) return;
+            const code = editor.getValue();
+            const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+          });
+        }
+
+        // Fullscreen expand
+        if (dpFullscreenBtn) {
+          dpFullscreenBtn.addEventListener('click', openLivePreview);
+        }
+
+        // Close split view
+        if (dpCloseBtn) {
+          dpCloseBtn.addEventListener('click', () => toggleSplitPreview(false));
+        }
+
+        // Viewport Switcher: Fluid, Tablet, Mobile
+        if (dpVpFluid) {
+          dpVpFluid.addEventListener('click', () => setDesktopViewport('fluid'));
+        }
+        if (dpVpTablet) {
+          dpVpTablet.addEventListener('click', () => setDesktopViewport('tablet'));
+        }
+        if (dpVpMobile) {
+          dpVpMobile.addEventListener('click', () => setDesktopViewport('mobile'));
+        }
+
+        // Console Drawer Header Toggle
+        if (dpConsoleHeaderToggle) {
+          dpConsoleHeaderToggle.addEventListener('click', (e) => {
+            if (e.target.closest('#dp-console-clear-btn')) return;
+            dpConsoleDrawer.classList.toggle('collapsed');
+            const icon = dpConsoleToggleBtn.querySelector('i');
+            if (icon) {
+              icon.className = dpConsoleDrawer.classList.contains('collapsed') ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+            }
+          });
+        }
+
+        // Console Clear
+        if (dpConsoleClearBtn) {
+          dpConsoleClearBtn.addEventListener('click', clearConsoleLogs);
+        }
+
+        // Iframe PostMessage Listener for Console Logs
+        window.addEventListener('message', (e) => {
+          if (e.data && e.data.type === 'dp_console') {
+            appendConsoleLog(e.data.level || 'info', e.data.msg || '');
+          }
+        });
+      }
+
+      function setDesktopViewport(mode) {
+        STATE.viewportMode = mode;
+        if (!dpFrameWrapper) return;
+        dpFrameWrapper.className = 'dp-frame-wrapper vp-' + mode;
+        if (dpVpFluid) dpVpFluid.classList.toggle('active', mode === 'fluid');
+        if (dpVpTablet) dpVpTablet.classList.toggle('active', mode === 'tablet');
+        if (dpVpMobile) dpVpMobile.classList.toggle('active', mode === 'mobile');
+      }
+
+      function debounceLivePreview() {
+        clearTimeout(livePreviewTimeout);
+        livePreviewTimeout = setTimeout(() => {
+          updateDesktopPreview();
+        }, 320);
+      }
+
+      function updateDesktopPreview() {
+        if (!editor || !dpLiveIframe) return;
+        const code = editor.getValue();
+        const activeTab = getActiveTab();
+        const lang = activeTab ? activeTab.language : 'html';
+
+        if (lang === 'html' || lang === 'xml') {
+          if (dpNonHtmlBox) dpNonHtmlBox.style.display = 'none';
+          dpLiveIframe.style.display = 'block';
+
+          // Inject console message transmitter into preview code
+          const consoleHookScript = `
+            <script>
+            (function() {
+              function sendLog(type, args) {
+                try {
+                  var str = Array.prototype.slice.call(args).map(function(item) {
+                    if (typeof item === 'object') {
+                      try { return JSON.stringify(item); } catch(e) { return String(item); }
+                    }
+                    return String(item);
+                  }).join(' ');
+                  window.parent.postMessage({ type: 'dp_console', level: type, msg: str }, '*');
+                } catch(err) {}
+              }
+              var _log = console.log, _warn = console.warn, _error = console.error;
+              console.log = function() { sendLog('info', arguments); _log.apply(console, arguments); };
+              console.warn = function() { sendLog('warn', arguments); _warn.apply(console, arguments); };
+              console.error = function() { sendLog('error', arguments); _error.apply(console, arguments); };
+              window.onerror = function(msg, url, line, col) {
+                sendLog('error', ['Error: ' + msg + ' (Line ' + line + ', Col ' + col + ')']);
+              };
+            })();
+            <\/script>
+          `;
+
+          let finalCode = code;
+          if (finalCode.includes('<head>')) {
+            finalCode = finalCode.replace('<head>', '<head>' + consoleHookScript);
+          } else {
+            finalCode = consoleHookScript + finalCode;
+          }
+          dpLiveIframe.srcdoc = finalCode;
+        } else if (lang === 'javascript') {
+          if (dpNonHtmlBox) dpNonHtmlBox.style.display = 'none';
+          dpLiveIframe.style.display = 'block';
+          const jsRunnerHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <script>
+              (function() {
+                function sendLog(type, args) {
+                  try {
+                    var str = Array.prototype.slice.call(args).map(function(item) {
+                      if (typeof item === 'object') {
+                        try { return JSON.stringify(item); } catch(e) { return String(item); }
+                      }
+                      return String(item);
+                    }).join(' ');
+                    window.parent.postMessage({ type: 'dp_console', level: type, msg: str }, '*');
+                  } catch(err) {}
+                }
+                var _log = console.log, _warn = console.warn, _error = console.error;
+                console.log = function() { sendLog('info', arguments); _log.apply(console, arguments); };
+                console.warn = function() { sendLog('warn', arguments); _warn.apply(console, arguments); };
+                console.error = function() { sendLog('error', arguments); _error.apply(console, arguments); };
+                window.onerror = function(msg, url, line, col) {
+                  sendLog('error', ['Error: ' + msg + ' (Line ' + line + ', Col ' + col + ')']);
+                };
+              })();
+              <\/script>
+            </head>
+            <body style="font-family:sans-serif;padding:16px;color:#333;">
+              <h3 style="margin-top:0;">JavaScript Sandbox Execution</h3>
+              <p style="color:#666;font-size:13px;">Check the live Console drawer below for output.</p>
+              <script>
+              try {
+                ${code}
+              } catch(e) {
+                console.error(e.message);
+              }
+              <\/script>
+            </body>
+            </html>
+          `;
+          dpLiveIframe.srcdoc = jsRunnerHtml;
+        } else {
+          dpLiveIframe.style.display = 'none';
+          if (dpNonHtmlBox) {
+            dpNonHtmlBox.style.display = 'block';
+            dpNonHtmlBox.innerHTML = `
+              <div style="background:#18181b;color:#4ade80;font-weight:700;margin-bottom:10px;font-size:12px;">
+                [DevEditor Live Preview - ${lang.toUpperCase()}]
+              </div>
+              <div style="color:#94a3b8;font-size:12px;margin-bottom:12px;">
+                Simulation output for non-browser backend code:
+              </div>
+              <pre style="color:#f4f4f5;font-size:13px;line-height:1.5;">${escapeHtml(code)}</pre>
+            `;
+          }
+        }
+      }
+
+      function appendConsoleLog(level, msg) {
+        if (!dpConsoleBody) return;
+        const emptyNotice = dpConsoleBody.querySelector('.dp-console-empty');
+        if (emptyNotice) emptyNotice.remove();
+
+        STATE.consoleLogs.push({ level, msg, time: new Date() });
+        if (dpConsoleCount) {
+          dpConsoleCount.textContent = STATE.consoleLogs.length.toString();
+        }
+
+        const row = document.createElement('div');
+        row.className = 'console-log-row log-' + level;
+        const iconClass = level === 'error' ? 'fa-solid fa-circle-exclamation' : (level === 'warn' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-chevron-right');
+        row.innerHTML = `
+          <i class="${iconClass}" style="margin-top:2px; font-size:11px;"></i>
+          <span>${escapeHtml(msg)}</span>
+        `;
+        dpConsoleBody.appendChild(row);
+        dpConsoleBody.scrollTop = dpConsoleBody.scrollHeight;
+      }
+
+      function clearConsoleLogs() {
+        STATE.consoleLogs = [];
+        if (dpConsoleCount) dpConsoleCount.textContent = '0';
+        if (dpConsoleBody) {
+          dpConsoleBody.innerHTML = '<div class="dp-console-empty">Console cleared. Output from preview appears here.</div>';
+        }
+      }
+
+      function closeAllModalsAndMenus() {
+        if (folderDropdown) folderDropdown.classList.remove('show');
+        if (dotsDropdown) dotsDropdown.classList.remove('show');
+        if (settingsDropdown) settingsDropdown.classList.remove('show');
+        if (previewOverlay && previewOverlay.classList.contains('active')) closePreview();
+        if (settingsScreen && settingsScreen.classList.contains('active')) settingsScreen.classList.remove('active');
+        if (miniToolbarBackdrop && miniToolbarBackdrop.classList.contains('active')) miniToolbarBackdrop.classList.remove('active');
+        if (storageBackdrop && storageBackdrop.classList.contains('active')) closeStorageModal();
+        if (restoreModalBackdrop && restoreModalBackdrop.classList.contains('active')) restoreModalBackdrop.classList.remove('active');
+        if (recentModalBackdrop && recentModalBackdrop.classList.contains('active')) recentModalBackdrop.classList.remove('active');
+        if (bookmarksModalBackdrop && bookmarksModalBackdrop.classList.contains('active')) bookmarksModalBackdrop.classList.remove('active');
+        if (storageMgrModalBackdrop && storageMgrModalBackdrop.classList.contains('active')) storageMgrModalBackdrop.classList.remove('active');
+        if (inputModalBackdrop && inputModalBackdrop.classList.contains('active')) inputModalBackdrop.classList.remove('active');
+        if (confirmModalBackdrop && confirmModalBackdrop.classList.contains('active')) confirmModalBackdrop.classList.remove('active');
+        if (navDrawer && navDrawer.classList.contains('active')) closeDrawer();
+      }
+
+      // ==========================================
+      // 9. Folder & Three-Dots Menus (Screenshots 1 & 2)
+      // ==========================================
+      // Hook up bottom action bar run button
+      if (btnActionRun) {
+        btnActionRun.addEventListener('click', openLivePreview);
+      }
+
+      // Folder Menu Toggle (Screenshot 2: next to pencil)
+      btnTopFolder.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dotsDropdown.classList.remove('show');
+        folderDropdown.classList.toggle('show');
+      });
+
+      // Three-Dots Menu Toggle (Screenshot 1: right side)
+      btnTopDots.addEventListener('click', (e) => {
+        e.stopPropagation();
+        folderDropdown.classList.remove('show');
+        dotsDropdown.classList.toggle('show');
+
+        // Sync checkboxes in dots menu
+        const chkToolbar = document.getElementById('dots-chk-toolbar');
+        if (chkToolbar) chkToolbar.checked = actionBarEl.style.display !== 'none';
+        const chkWrap = document.getElementById('dots-chk-wrap');
+        if (chkWrap && editor) chkWrap.checked = editor.session.getUseWrapMode();
+        const chkReadOnly = document.getElementById('dots-chk-readonly');
+        if (chkReadOnly && editor) chkReadOnly.checked = editor.getReadOnly();
+      });
+
+      // Close dropdowns on outside click
+      window.addEventListener('click', (e) => {
+        if (!e.target.closest('#folder-dropdown-menu') && !e.target.closest('#btn-top-folder')) {
+          folderDropdown.classList.remove('show');
+        }
+        if (!e.target.closest('#dots-dropdown-menu') && !e.target.closest('#btn-top-dots')) {
+          dotsDropdown.classList.remove('show');
+        }
+      });
+
+      // Handle Folder Menu Items (Screenshot 2)
+      folderDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const action = item.getAttribute('data-folder-action');
+          folderDropdown.classList.remove('show');
+          handleFolderAction(action);
+        });
+      });
+
+      function handleFolderAction(action) {
+        switch (action) {
+          case 'new':
+            promptNewFile();
+            break;
+          case 'open':
+            openStorageModal();
+            break;
+          case 'open_saf':
+            if (realFilePicker) realFilePicker.click();
+            break;
+          case 'save':
+            saveCurrentFile();
+            break;
+          case 'save_as':
+            promptSaveAs();
+            break;
+          case 'reload':
+            if (confirm('Reload file from storage and discard unsaved edits?')) {
+              const current = getActiveTab();
+              if (current && editor) {
+                editor.setValue(current.content, -1);
+                current.isDirty = false;
+                renderTabs();
+                showToast('Reloaded');
+              }
+            }
+            break;
+          case 'close':
+            promptCloseTab(STATE.activeTabId);
+            break;
+        }
+      }
+
+      // Handle Three-Dots Menu Items (Screenshot 1)
+      dotsDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const action = item.getAttribute('data-dots-action');
+          if (action && !action.startsWith('toggle_')) {
+            dotsDropdown.classList.remove('show');
+          }
+          handleDotsAction(action, item);
+        });
+      });
+
+      function handleDotsAction(action, itemEl) {
+        if (!editor) return;
+
+        switch (action) {
+          case 'search':
+            editor.execCommand('find');
+            break;
+          case 'share':
+            if (navigator.share) {
+              navigator.share({
+                title: getActiveTab() ? getActiveTab().name : 'DevEditor Code',
+                text: editor.getValue()
+              }).catch(() => {});
+            } else {
+              copyToClipboard(editor.getValue());
+              showToast('Code copied to clipboard for sharing', 'success');
+            }
+            break;
+          case 'goto_line':
+            editor.execCommand('gotoline');
+            break;
+          case 'syntax':
+            promptChangeSyntax();
+            break;
+          case 'encoding':
+            showToast('Character Encoding: UTF-8', 'info');
+            break;
+          case 'visual_styles':
+            cycleTheme();
+            break;
+          case 'statistics':
+            const code = editor.getValue();
+            const lines = editor.session.getLength();
+            const words = (code.match(/\S+/g) || []).length;
+            alert(`File Statistics:\n\nCharacters: ${code.length}\nLines: ${lines}\nWords: ${words}`);
+            break;
+          case 'execute':
+            openLivePreview();
+            break;
+          case 'print':
+            window.print();
+            break;
+          case 'toggle_mini_toolbar':
+            const isVisible = actionBarEl.style.display !== 'none';
+            actionBarEl.style.display = isVisible ? 'none' : 'flex';
+            const chkToolbar = document.getElementById('dots-chk-toolbar');
+            if (chkToolbar) chkToolbar.checked = !isVisible;
+            showToast(isVisible ? 'Mini Toolbar hidden' : 'Mini Toolbar visible');
+            break;
+          case 'toggle_word_wrap':
+            const wrap = !editor.session.getUseWrapMode();
+            editor.session.setUseWrapMode(wrap);
+            STATE.settings.wordWrap = wrap;
+            saveSettings();
+            const chkWrap = document.getElementById('dots-chk-wrap');
+            if (chkWrap) chkWrap.checked = wrap;
+            showToast(wrap ? 'Word wrap enabled' : 'Word wrap disabled');
+            break;
+          case 'toggle_read_only':
+            const ro = !editor.getReadOnly();
+            editor.setReadOnly(ro);
+            const chkRo = document.getElementById('dots-chk-readonly');
+            if (chkRo) chkRo.checked = ro;
+            showToast(ro ? 'Read Only mode enabled' : 'Edit mode enabled');
+            break;
+        }
+      }
+
+      function promptChangeSyntax() {
+        const lang = prompt('Enter syntax language (html, xml, javascript, css, python, c_cpp, java):', getActiveTab() ? getActiveTab().language : 'html');
+        if (lang) {
+          const clean = lang.trim().toLowerCase();
+          const current = getActiveTab();
+          if (current) current.language = clean;
+          editor.session.setMode('ace/mode/' + clean);
+          showToast('Syntax set to: ' + clean.toUpperCase(), 'success');
+        }
+      }
+
+      function cycleTheme() {
+        const themes = ['monokai', 'dracula', 'tomorrow_night', 'chrome'];
+        const curIdx = themes.indexOf(STATE.settings.theme);
+        const nextTheme = themes[(curIdx + 1) % themes.length];
+        STATE.settings.theme = nextTheme;
+        editor.setTheme('ace/theme/' + nextTheme);
+        document.getElementById('lbl-theme-name').textContent = nextTheme;
+        saveSettings();
+        showToast('Theme: ' + nextTheme);
+      }
+
+      // ==========================================
+      // 10. Drawer Navigation (Screenshot 8)
+      // ==========================================
+      btnHamburger.addEventListener('click', () => {
+        navDrawer.classList.add('active');
+        drawerBackdrop.classList.add('active');
+      });
+
+      drawerBackdrop.addEventListener('click', () => {
+        navDrawer.classList.remove('active');
+        drawerBackdrop.classList.remove('active');
+      });
+
+      navDrawer.querySelectorAll('.drawer-menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const action = item.getAttribute('data-drawer-action');
+          navDrawer.classList.remove('active');
+          drawerBackdrop.classList.remove('active');
+          handleDrawerAction(action);
+        });
+      });
+
+      function handleDrawerAction(action) {
+        switch (action) {
+          case 'internal_storage':
+          case 'recent':
+          case 'bookmarks':
+            openStorageModal();
+            break;
+          case 'storage_manager':
+            backupAllData();
+            break;
+          case 'remove_ads':
+            showToast('Pro Version Active. No ads.', 'success');
+            break;
+          case 'recommend':
+            if (navigator.share) {
+              navigator.share({ title: 'DevEditor', text: 'Best mobile code editor!' });
+            } else {
+              showToast('DevEditor: Fast & powerful mobile code editor');
+            }
+            break;
+          case 'settings':
+            openSettingsScreen();
+            break;
+          case 'help':
+            alert('DevEditor Mobile Shortcuts:\n\n- Tap [Ctrl] on the bottom bar to reveal quick actions: Select All (A), Cut (X), Copy (C), Paste (V), Save (S).\n- Long press text for floating context menu.\n- Use arrow buttons in top toolbar for fine cursor adjustment.\n- Run button opens live preview with external browser link.');
+            break;
+          case 'exit':
+            // Prompt exit permission dialog as requested in prompt
+            if (confirm('Are you sure you want to exit the DevEditor application?')) {
+              showToast('Exiting application...');
+              setTimeout(() => {
+                window.close();
+              }, 500);
+            }
+            break;
+        }
+      }
+
+      // ==========================================
+      // 11. Settings Screen (Screenshot 9)
+      // ==========================================
+      function openSettingsScreen() {
+        settingsScreen.classList.add('active');
+        window.history.pushState({ modal: 'settings' }, '');
+      }
+
+      settingsBackBtn.addEventListener('click', () => {
+        settingsScreen.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'settings') {
+          window.history.back();
+        }
+      });
+
+      // Settings toggles
+      document.getElementById('toggle-word-wrap').addEventListener('change', function () {
+        STATE.settings.wordWrap = this.checked;
+        if (editor) editor.session.setUseWrapMode(this.checked);
+        saveSettings();
+      });
+
+      document.getElementById('toggle-line-numbers').addEventListener('change', function () {
+        STATE.settings.lineNumbers = this.checked;
+        if (editor) editor.renderer.setShowGutter(this.checked);
+        saveSettings();
+      });
+
+      document.getElementById('toggle-auto-indent').addEventListener('change', function () {
+        STATE.settings.autoIndent = this.checked;
+        saveSettings();
+      });
+
+      document.getElementById('toggle-fullscreen').addEventListener('change', function () {
+        STATE.settings.fullScreen = this.checked;
+        if (this.checked) {
+          if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+        saveSettings();
+      });
+
+      document.getElementById('opt-mini-toolbar').addEventListener('click', () => {
+        openMiniToolbarDialog();
+      });
+
+      document.getElementById('opt-font-size').addEventListener('click', () => {
+        const sizes = [12, 14, 16, 18, 20, 22];
+        const curIdx = sizes.indexOf(STATE.settings.fontSize);
+        const nextSize = sizes[(curIdx + 1) % sizes.length];
+        STATE.settings.fontSize = nextSize;
+        if (editor) editor.setFontSize(nextSize);
+        document.getElementById('lbl-font-size').textContent = `Indicates the font size for text editing: ${nextSize}sp.`;
+        saveSettings();
+        showToast('Font size: ' + nextSize + 'sp');
+      });
+
+      document.getElementById('opt-theme-select').addEventListener('click', () => {
+        const themes = ['monokai', 'dracula', 'tomorrow_night', 'chrome'];
+        const curIdx = themes.indexOf(STATE.settings.theme);
+        const nextTheme = themes[(curIdx + 1) % themes.length];
+        STATE.settings.theme = nextTheme;
+        if (editor) editor.setTheme('ace/theme/' + nextTheme);
+        document.getElementById('lbl-theme-name').textContent = nextTheme;
+        saveSettings();
+        showToast('Theme switched to ' + nextTheme);
+      });
+
+      // ==========================================
+      // Settings 3-Dots Dropdown & Backup / Restore
+      // ==========================================
+      if (settingsBtnDots) {
+        settingsBtnDots.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (settingsDropdown) {
+            settingsDropdown.classList.toggle('show');
+          }
+        });
+      }
+
+      if (btnSettingsBackup) {
+        btnSettingsBackup.addEventListener('click', () => {
+          if (settingsDropdown) settingsDropdown.classList.remove('show');
+          backupAllData();
+        });
+      }
+
+      if (btnSettingsRestore) {
+        btnSettingsRestore.addEventListener('click', () => {
+          if (settingsDropdown) settingsDropdown.classList.remove('show');
+          openRestoreModal();
+        });
+      }
+
+      if (btnSettingsReset) {
+        btnSettingsReset.addEventListener('click', () => {
+          if (settingsDropdown) settingsDropdown.classList.remove('show');
+          if (confirm('Reset all editor settings and configurations to default?')) {
+            resetAllSettings();
+          }
+        });
+      }
+
+      function backupAllData() {
+        const current = getActiveTab();
+        if (current && editor) {
+          current.content = editor.getValue();
+        }
+        const backupData = {
+          app: 'DevEditor',
+          version: '2.0',
+          timestamp: new Date().toISOString(),
+          tabs: STATE.tabs,
+          settings: STATE.settings,
+          toolbar: STATE.toolbarItems,
+          fs: VIRTUAL_FS
+        };
+        const str = JSON.stringify(backupData, null, 2);
+
+        // Save local snapshot
+        try {
+          localStorage.setItem(SNAPSHOT_KEY, str);
+        } catch (e) {}
+
+        const today = new Date().toISOString().slice(0, 10);
+        triggerFileDownload(`deveditor_backup_${today}.json`, str);
+        showToast('Backup saved & downloaded to your device!', 'success');
+      }
+
+      function openRestoreModal() {
+        const snapshotRaw = localStorage.getItem(SNAPSHOT_KEY);
+        if (snapshotRaw) {
+          try {
+            const parsed = JSON.parse(snapshotRaw);
+            const d = new Date(parsed.timestamp).toLocaleString();
+            if (restoreSnapshotInfo) restoreSnapshotInfo.textContent = `Local snapshot available from: ${d}`;
+            if (btnRestoreSnapshot) btnRestoreSnapshot.style.display = 'flex';
+          } catch (e) {
+            if (restoreSnapshotInfo) restoreSnapshotInfo.textContent = '';
+            if (btnRestoreSnapshot) btnRestoreSnapshot.style.display = 'none';
+          }
+        } else {
+          if (restoreSnapshotInfo) restoreSnapshotInfo.textContent = 'No local snapshot found. Use file upload.';
+          if (btnRestoreSnapshot) btnRestoreSnapshot.style.display = 'none';
+        }
+        if (restoreModalBackdrop) restoreModalBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'restore' }, '');
+      }
+
+      function closeRestoreModal() {
+        if (restoreModalBackdrop) restoreModalBackdrop.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'restore') {
+          window.history.back();
+        }
+      }
+
+      if (btnRestoreClose) btnRestoreClose.addEventListener('click', closeRestoreModal);
+
+      if (btnRestoreFile) {
+        btnRestoreFile.addEventListener('click', () => {
+          if (restoreFileInput) restoreFileInput.click();
+        });
+      }
+
+      if (restoreFileInput) {
+        restoreFileInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = JSON.parse(evt.target.result);
+              applyRestoredData(data);
+              closeRestoreModal();
+              showToast('Data and settings restored from file!', 'success');
+            } catch (err) {
+              alert('Invalid backup file. Could not parse JSON.');
+            }
+          };
+          reader.readAsText(file);
+          restoreFileInput.value = '';
+        });
+      }
+
+      if (btnRestoreSnapshot) {
+        btnRestoreSnapshot.addEventListener('click', () => {
+          const snapshotRaw = localStorage.getItem(SNAPSHOT_KEY);
+          if (!snapshotRaw) {
+            showToast('No snapshot found');
+            return;
+          }
+          try {
+            const data = JSON.parse(snapshotRaw);
+            applyRestoredData(data);
+            closeRestoreModal();
+            showToast('Restored from local snapshot!', 'success');
+          } catch (e) {
+            alert('Could not restore snapshot.');
+          }
+        });
+      }
+
+      if (btnRestoreDefault) {
+        btnRestoreDefault.addEventListener('click', () => {
+          if (confirm('Reset everything to factory default? Unsaved custom files will be reset.')) {
+            resetAllSettings();
+            closeRestoreModal();
+          }
+        });
+      }
+
+      function applyRestoredData(data) {
+        if (data.tabs && Array.isArray(data.tabs) && data.tabs.length > 0) {
+          STATE.tabs = data.tabs;
+          saveTabsToStorage();
+        }
+        if (data.settings) {
+          STATE.settings = Object.assign(STATE.settings, data.settings);
+          saveSettings();
+        }
+        if (data.toolbar && Array.isArray(data.toolbar)) {
+          STATE.toolbarItems = data.toolbar;
+          localStorage.setItem(STORAGE_TOOLBAR_KEY, JSON.stringify(STATE.toolbarItems));
+          renderActionBar();
+        }
+        if (data.fs && data.fs.folders) {
+          VIRTUAL_FS = data.fs;
+          saveFsToStorage();
+        }
+        // Apply settings to Ace
+        if (editor) {
+          editor.setTheme('ace/theme/' + STATE.settings.theme);
+          editor.setFontSize(STATE.settings.fontSize);
+          editor.session.setUseWrapMode(STATE.settings.wordWrap);
+          editor.renderer.setShowGutter(STATE.settings.lineNumbers);
+        }
+        const lblTheme = document.getElementById('lbl-theme-name');
+        if (lblTheme) lblTheme.textContent = STATE.settings.theme;
+        const lblFont = document.getElementById('lbl-font-size');
+        if (lblFont) lblFont.textContent = `Indicates the font size for text editing: ${STATE.settings.fontSize}sp.`;
+        const chkWrap = document.getElementById('toggle-word-wrap');
+        if (chkWrap) chkWrap.checked = STATE.settings.wordWrap;
+        const chkLine = document.getElementById('toggle-line-numbers');
+        if (chkLine) chkLine.checked = STATE.settings.lineNumbers;
+        switchTab(STATE.tabs[0].id);
+      }
+
+      function resetAllSettings() {
+        STATE.settings = {
+          wordWrap: true,
+          lineNumbers: true,
+          autoIndent: true,
+          undoByBack: false,
+          fontSize: 16,
+          theme: 'monokai',
+          fullScreen: false
+        };
+        STATE.toolbarItems = JSON.parse(JSON.stringify(DEFAULT_TOOLBAR_ITEMS));
+        localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(STATE.settings));
+        localStorage.setItem(STORAGE_TOOLBAR_KEY, JSON.stringify(STATE.toolbarItems));
+        if (editor) {
+          editor.setTheme('ace/theme/monokai');
+          editor.setFontSize(16);
+          editor.session.setUseWrapMode(true);
+          editor.renderer.setShowGutter(true);
+        }
+        const lblTheme = document.getElementById('lbl-theme-name');
+        if (lblTheme) lblTheme.textContent = 'Monokai';
+        const lblFont = document.getElementById('lbl-font-size');
+        if (lblFont) lblFont.textContent = 'Indicates the font size for text editing: 16sp.';
+        renderActionBar();
+        showToast('Settings reset to default', 'info');
+      }
+
+      function saveSettings() {
+        localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(STATE.settings));
+      }
+
+      // ==========================================
+      // 12. Mini Toolbar Dialog (Screenshot 10)
+      // ==========================================
+      let tempToolbarState = [];
+
+      function openMiniToolbarDialog() {
+        tempToolbarState = JSON.parse(JSON.stringify(STATE.toolbarItems));
+        renderMiniToolbarDialogItems();
+        miniToolbarBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'mini_toolbar' }, '');
+      }
+
+      function renderMiniToolbarDialogItems() {
+        miniToolbarListEl.innerHTML = '';
+        tempToolbarState.forEach((item, index) => {
+          const row = document.createElement('div');
+          row.className = 'reorder-item';
+          row.innerHTML = `
+            <div class="reorder-left">
+              <div class="drag-handle-btns">
+                <button type="button" class="arrow-move-btn btn-move-up" title="Move Up"><i class="fa-solid fa-chevron-up"></i></button>
+                <button type="button" class="arrow-move-btn btn-move-down" title="Move Down"><i class="fa-solid fa-chevron-down"></i></button>
+              </div>
+              <span style="min-width:70px;">${item.label}</span>
+              <i class="fa-solid ${item.icon}" style="color:#6b7280; font-size:15px;"></i>
+            </div>
+            <input type="checkbox" class="custom-checkbox" ${item.enabled ? 'checked' : ''} />
+          `;
+
+          // Move up
+          row.querySelector('.btn-move-up').addEventListener('click', () => {
+            if (index > 0) {
+              const [moved] = tempToolbarState.splice(index, 1);
+              tempToolbarState.splice(index - 1, 0, moved);
+              renderMiniToolbarDialogItems();
+            }
+          });
+
+          // Move down
+          row.querySelector('.btn-move-down').addEventListener('click', () => {
+            if (index < tempToolbarState.length - 1) {
+              const [moved] = tempToolbarState.splice(index, 1);
+              tempToolbarState.splice(index + 1, 0, moved);
+              renderMiniToolbarDialogItems();
+            }
+          });
+
+          // Checkbox toggle
+          row.querySelector('.custom-checkbox').addEventListener('change', function () {
+            item.enabled = this.checked;
+          });
+
+          miniToolbarListEl.appendChild(row);
+        });
+      }
+
+      btnDialogDefault.addEventListener('click', () => {
+        tempToolbarState = JSON.parse(JSON.stringify(DEFAULT_TOOLBAR_ITEMS));
+        renderMiniToolbarDialogItems();
+      });
+
+      btnDialogCancel.addEventListener('click', () => {
+        miniToolbarBackdrop.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'mini_toolbar') {
+          window.history.back();
+        }
+      });
+
+      btnDialogOk.addEventListener('click', () => {
+        STATE.toolbarItems = JSON.parse(JSON.stringify(tempToolbarState));
+        localStorage.setItem(STORAGE_TOOLBAR_KEY, JSON.stringify(STATE.toolbarItems));
+        renderActionBar();
+        miniToolbarBackdrop.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'mini_toolbar') {
+          window.history.back();
+        }
+        showToast('Mini toolbar updated');
+      });
+
+      // ==========================================
+      // 13. Virtual Filesystem & Internal Storage File Explorer
+      // ==========================================
+      const FS_KEY = 'deveditor_storage_fs_v3';
+      const SNAPSHOT_KEY = 'deveditor_backup_snapshot_v1';
+      const ROOT_PATH = '/storage/emulated/0';
+      let currentFsPath = ROOT_PATH;
+
+      const INITIAL_FS = {
+        folders: {
+          '/storage/emulated/0': [
+            { name: 'DevEditor', type: 'folder', path: '/storage/emulated/0/DevEditor' },
+            { name: 'Documents', type: 'folder', path: '/storage/emulated/0/Documents' },
+            { name: 'Download', type: 'folder', path: '/storage/emulated/0/Download' },
+            { name: 'html reader.html', type: 'file', path: '/storage/emulated/0/html reader.html', content: DEFAULT_CODE, modified: Date.now() - 3600000, bookmarked: true },
+            { name: 'index.html', type: 'file', path: '/storage/emulated/0/index.html', content: DEFAULT_CODE, modified: Date.now() - 7200000, bookmarked: false }
+          ],
+          '/storage/emulated/0/DevEditor': [
+            { name: 'Projects', type: 'folder', path: '/storage/emulated/0/DevEditor/Projects' },
+            { name: 'app.js', type: 'file', path: '/storage/emulated/0/DevEditor/app.js', content: '// DevEditor Script\nconsole.log("DevEditor running!");\n', modified: Date.now() - 1800000, bookmarked: false },
+            { name: 'style.css', type: 'file', path: '/storage/emulated/0/DevEditor/style.css', content: '/* DevEditor Styles */\nbody {\n  background: #111827;\n  color: #f3f4f6;\n}\n', modified: Date.now() - 1800000, bookmarked: false }
+          ],
+          '/storage/emulated/0/DevEditor/Projects': [
+            { name: 'portfolio.html', type: 'file', path: '/storage/emulated/0/DevEditor/Projects/portfolio.html', content: '<!DOCTYPE html>\n<html>\n<head><title>Portfolio</title></head>\n<body>\n  <h1>My Mobile Website</h1>\n</body>\n</html>', modified: Date.now() - 900000, bookmarked: true }
+          ],
+          '/storage/emulated/0/Documents': [],
+          '/storage/emulated/0/Download': []
+        },
+        recent: [
+          { name: 'html reader.html', path: '/storage/emulated/0/html reader.html', time: Date.now() - 120000 },
+          { name: 'index.html', path: '/storage/emulated/0/index.html', time: Date.now() - 300000 },
+          { name: 'portfolio.html', path: '/storage/emulated/0/DevEditor/Projects/portfolio.html', time: Date.now() - 900000 }
+        ]
+      };
+
+      let VIRTUAL_FS = loadFsFromStorage();
+
+      function loadFsFromStorage() {
+        try {
+          const raw = localStorage.getItem(FS_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.folders) return parsed;
+          }
+        } catch (e) {}
+        return JSON.parse(JSON.stringify(INITIAL_FS));
+      }
+
+      function saveFsToStorage() {
+        try {
+          localStorage.setItem(FS_KEY, JSON.stringify(VIRTUAL_FS));
+        } catch (e) {
+          console.warn('FS save error:', e);
+        }
+      }
+
+      function fsGetItems(folderPath) {
+        if (!VIRTUAL_FS.folders[folderPath]) {
+          VIRTUAL_FS.folders[folderPath] = [];
+        }
+        return VIRTUAL_FS.folders[folderPath];
+      }
+
+      function fsAddOrUpdateFile(folderPath, filename, content) {
+        const items = fsGetItems(folderPath);
+        const existing = items.find(i => i.type === 'file' && i.name.toLowerCase() === filename.toLowerCase());
+        const fullPath = folderPath + '/' + filename;
+        if (existing) {
+          existing.content = content;
+          existing.modified = Date.now();
+        } else {
+          items.push({
+            name: filename,
+            type: 'file',
+            path: fullPath,
+            content: content,
+            modified: Date.now(),
+            bookmarked: false
+          });
+        }
+        fsRecordRecent(filename, fullPath);
+        saveFsToStorage();
+      }
+
+      function fsCreateFolder(folderPath, foldername) {
+        const items = fsGetItems(folderPath);
+        const cleanName = foldername.trim().replace(/[\\/:*?"<>|]/g, '');
+        if (!cleanName) return false;
+        if (items.some(i => i.name.toLowerCase() === cleanName.toLowerCase())) {
+          showToast('Folder already exists', 'error');
+          return false;
+        }
+        const newPath = folderPath + '/' + cleanName;
+        items.push({
+          name: cleanName,
+          type: 'folder',
+          path: newPath
+        });
+        VIRTUAL_FS.folders[newPath] = [];
+        saveFsToStorage();
+        return true;
+      }
+
+      function fsDeleteEntry(folderPath, name, isFolder) {
+        const items = fsGetItems(folderPath);
+        const targetPath = folderPath + '/' + name;
+        VIRTUAL_FS.folders[folderPath] = items.filter(i => i.name !== name);
+        if (isFolder) {
+          Object.keys(VIRTUAL_FS.folders).forEach(k => {
+            if (k === targetPath || k.startsWith(targetPath + '/')) {
+              delete VIRTUAL_FS.folders[k];
+            }
+          });
+        }
+        saveFsToStorage();
+      }
+
+      function fsRenameEntry(folderPath, oldName, newName, isFolder) {
+        const items = fsGetItems(folderPath);
+        const item = items.find(i => i.name === oldName);
+        if (!item) return false;
+        const cleanName = newName.trim().replace(/[\\/:*?"<>|]/g, '');
+        if (!cleanName) return false;
+        if (cleanName !== oldName && items.some(i => i.name.toLowerCase() === cleanName.toLowerCase())) {
+          showToast('Name already exists', 'error');
+          return false;
+        }
+        item.name = cleanName;
+        const oldPath = item.path;
+        const newPath = folderPath + '/' + cleanName;
+        item.path = newPath;
+        if (isFolder) {
+          const oldKeys = Object.keys(VIRTUAL_FS.folders).filter(k => k === oldPath || k.startsWith(oldPath + '/'));
+          oldKeys.forEach(oldKey => {
+            const newKey = newPath + oldKey.slice(oldPath.length);
+            VIRTUAL_FS.folders[newKey] = VIRTUAL_FS.folders[oldKey];
+            delete VIRTUAL_FS.folders[oldKey];
+          });
+        }
+        saveFsToStorage();
+        return true;
+      }
+
+      function fsRecordRecent(name, path) {
+        if (!VIRTUAL_FS.recent) VIRTUAL_FS.recent = [];
+        VIRTUAL_FS.recent = VIRTUAL_FS.recent.filter(r => r.path !== path);
+        VIRTUAL_FS.recent.unshift({ name, path, time: Date.now() });
+        if (VIRTUAL_FS.recent.length > 20) VIRTUAL_FS.recent.pop();
+        saveFsToStorage();
+      }
+
+      function fsToggleBookmark(folderPath, filename) {
+        const items = fsGetItems(folderPath);
+        const item = items.find(i => i.name === filename);
+        if (item) {
+          item.bookmarked = !item.bookmarked;
+          saveFsToStorage();
+          showToast(item.bookmarked ? 'Added to Bookmarks' : 'Removed from Bookmarks');
+        }
+      }
+
+      // ==========================================
+      // Internal Storage File Explorer UI
+      // ==========================================
+      function openStorageModal(startPath) {
+        currentFsPath = startPath || ROOT_PATH;
+        renderStorageList();
+        if (storageBackdrop) storageBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'storage' }, '');
+      }
+      const openStorageExplorer = openStorageModal;
+
+      function closeStorageModal() {
+        if (storageBackdrop) storageBackdrop.classList.remove('active');
+        if (window.history.state && window.history.state.modal === 'storage') {
+          window.history.back();
+        }
+      }
+
+      if (btnStorageClose) {
+        btnStorageClose.addEventListener('click', closeStorageModal);
+      }
+
+      if (storageSearchInput) {
+        storageSearchInput.addEventListener('input', (e) => {
+          storageSearchQuery = e.target.value.trim();
+          renderStorageList();
+        });
+      }
+
+      if (storageFilterChips) {
+        storageFilterChips.querySelectorAll('.storage-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            storageFilterChips.querySelectorAll('.storage-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentStorageFilter = chip.getAttribute('data-filter') || 'all';
+            renderStorageList();
+          });
+        });
+      }
+
+      function renderStorageList() {
+        if (!storageCurrentPathEl || !storageFileList) return;
+        storageCurrentPathEl.textContent = currentFsPath;
+
+        if (btnStorageUp) {
+          if (currentFsPath === ROOT_PATH) {
+            btnStorageUp.style.display = 'none';
+          } else {
+            btnStorageUp.style.display = 'inline-flex';
+          }
+        }
+
+        const items = fsGetItems(currentFsPath);
+        storageFileList.innerHTML = '';
+
+        let folders = items.filter(i => i.type === 'folder').sort((a, b) => a.name.localeCompare(b.name));
+        let files = items.filter(i => i.type === 'file').sort((a, b) => a.name.localeCompare(b.name));
+
+        // Filter by Category Chip
+        if (currentStorageFilter !== 'all') {
+          if (currentStorageFilter === 'folders') {
+            files = [];
+          } else {
+            folders = [];
+            files = files.filter(f => {
+              const ext = (f.name || '').split('.').pop().toLowerCase();
+              if (currentStorageFilter === 'html') return ext === 'html' || ext === 'htm';
+              if (currentStorageFilter === 'js') return ext === 'js' || ext === 'ts';
+              if (currentStorageFilter === 'css') return ext === 'css';
+              return true;
+            });
+          }
+        }
+
+        // Filter by Search Query
+        if (storageSearchQuery) {
+          const q = storageSearchQuery.toLowerCase();
+          folders = folders.filter(f => f.name.toLowerCase().includes(q));
+          files = files.filter(f => f.name.toLowerCase().includes(q));
+        }
+
+        let totalBytes = 0;
+
+        if (folders.length === 0 && files.length === 0) {
+          storageFileList.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 16px; color:#94a3b8; text-align:center; gap:8px;">
+              <i class="fa-regular fa-folder-open" style="font-size:32px; color:#cbd5e1;"></i>
+              <div style="font-size:13px; font-weight:500;">No matching files or folders</div>
+              <div style="font-size:11px;">Try clearing search or tap <b>+ File</b> to add a new file.</div>
+            </div>
+          `;
+          if (storageStatsInfo) storageStatsInfo.textContent = '0 items';
+          return;
+        }
+
+        // Render folders
+        folders.forEach(folder => {
+          const childCount = (VIRTUAL_FS.folders[folder.path] || []).length;
+          const el = document.createElement('div');
+          el.className = 'fs-item';
+          el.innerHTML = `
+            <div class="fs-item-left">
+              <div class="fs-icon-wrap fs-icon-folder">
+                <i class="fa-solid fa-folder"></i>
+              </div>
+              <div class="fs-info-col">
+                <span class="fs-name">${escapeHtml(folder.name)}</span>
+                <span class="fs-meta">${childCount} ${childCount === 1 ? 'item' : 'items'}</span>
+              </div>
+            </div>
+            <div class="fs-actions-right">
+              <button type="button" class="fs-btn-tool del" title="Delete folder">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+              <i class="fa-solid fa-chevron-right" style="color:#cbd5e1; font-size:12px; margin-left:4px;"></i>
+            </div>
+          `;
+
+          el.querySelector('.fs-item-left').addEventListener('click', () => {
+            currentFsPath = folder.path;
+            renderStorageList();
+          });
+
+          el.querySelector('.del').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete folder "${folder.name}" and all its contents?`)) {
+              fsDeleteEntry(currentFsPath, folder.name, true);
+              renderStorageList();
+              showToast('Folder deleted');
+            }
+          });
+
+          storageFileList.appendChild(el);
+        });
+
+        // Render files
+        files.forEach(file => {
+          const content = file.content || '';
+          const bytes = content.length;
+          totalBytes += bytes;
+          const sizeStr = bytes > 1024 ? (bytes / 1024).toFixed(1) + ' KB' : bytes + ' B';
+          const iconInfo = getFileIconClass(file.name);
+
+          const el = document.createElement('div');
+          el.className = 'fs-item';
+          el.innerHTML = `
+            <div class="fs-item-left">
+              <div class="fs-icon-wrap ${iconInfo.wrapClass}">
+                <i class="${iconInfo.iconClass}"></i>
+              </div>
+              <div class="fs-info-col">
+                <span class="fs-name">${escapeHtml(file.name)}</span>
+                <span class="fs-meta">
+                  <span>${sizeStr}</span>
+                  <span>•</span>
+                  <span>${formatDate(file.modified || Date.now())}</span>
+                </span>
+              </div>
+            </div>
+            <div class="fs-actions-right">
+              <button type="button" class="fs-btn-tool star-btn ${file.bookmarked ? 'starred' : ''}" title="Bookmark">
+                <i class="fa-${file.bookmarked ? 'solid' : 'regular'} fa-star"></i>
+              </button>
+              <button type="button" class="fs-btn-tool download-btn" title="Download to device">
+                <i class="fa-solid fa-download"></i>
+              </button>
+              <button type="button" class="fs-btn-tool rename-btn" title="Rename">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button type="button" class="fs-btn-tool del" title="Delete">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          `;
+
+          // Tap file to open in editor tab
+          el.querySelector('.fs-item-left').addEventListener('click', () => {
+            openFileInEditor(file.name, file.content || '');
+            fsRecordRecent(file.name, file.path);
+            closeStorageModal();
+          });
+
+          // Star bookmark button
+          el.querySelector('.star-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            fsToggleBookmark(currentFsPath, file.name);
+            renderStorageList();
+          });
+
+          // Download file
+          el.querySelector('.download-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerFileDownload(file.name, file.content || '');
+            showToast(`Downloading ${file.name}`);
+          });
+
+          // Rename file
+          el.querySelector('.rename-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showInputModal('Rename File', file.name, (newName) => {
+              if (newName && newName !== file.name) {
+                if (fsRenameEntry(currentFsPath, file.name, newName, false)) {
+                  const openTab = STATE.tabs.find(t => t.name === file.name);
+                  if (openTab) {
+                    openTab.name = newName;
+                    openTab.language = detectLanguage(newName);
+                    renderTabs();
+                  }
+                  renderStorageList();
+                  showToast(`Renamed to ${newName}`);
+                }
+              }
+            });
+          });
+
+          // Delete file
+          el.querySelector('.del').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete file "${file.name}"?`)) {
+              fsDeleteEntry(currentFsPath, file.name, false);
+              renderStorageList();
+              showToast('File deleted');
+            }
+          });
+
+          storageFileList.appendChild(el);
+        });
+
+        const totalItems = folders.length + files.length;
+        const totalSizeStr = totalBytes > 1024 ? (totalBytes / 1024).toFixed(1) + ' KB' : totalBytes + ' B';
+        if (storageStatsInfo) {
+          storageStatsInfo.textContent = `${totalItems} items (${files.length} files, ${totalSizeStr})`;
+        }
+      }
+
+      function openFileInEditor(filename, content) {
+        const existingTab = STATE.tabs.find(t => t.name.toLowerCase() === filename.toLowerCase());
+        if (existingTab) {
+          switchTab(existingTab.id);
+          showToast(`Switched to tab: ${filename}`);
+        } else {
+          const newTab = createNewTab(filename, content);
+          switchTab(newTab.id);
+          showToast(`Opened: ${filename}`, 'success');
+        }
+      }
+
+      // Up button
+      if (btnStorageUp) {
+        btnStorageUp.addEventListener('click', () => {
+          if (currentFsPath !== ROOT_PATH) {
+            const parts = currentFsPath.split('/');
+            parts.pop();
+            currentFsPath = parts.join('/') || ROOT_PATH;
+            renderStorageList();
+          }
+        });
+      }
+
+      // New File in Current Storage Folder
+      if (btnStorageNew) {
+        btnStorageNew.addEventListener('click', () => {
+          showInputModal('Create New File', 'page.html', (name) => {
+            if (name) {
+              const cleanName = name.trim();
+              const starter = getStarterCode(cleanName);
+              fsAddOrUpdateFile(currentFsPath, cleanName, starter);
+              openFileInEditor(cleanName, starter);
+              closeStorageModal();
+            }
+          });
+        });
+      }
+
+      // New Folder in Current Storage Folder
+      if (btnStorageNewFolder) {
+        btnStorageNewFolder.addEventListener('click', () => {
+          showInputModal('Create New Folder', 'components', (name) => {
+            if (name) {
+              if (fsCreateFolder(currentFsPath, name)) {
+                renderStorageList();
+                showToast(`Folder created: ${name}`);
+              }
+            }
+          });
+        });
+      }
+
+      // Save Current Active Tab Into Current Storage Folder
+      if (btnStorageSaveHere) {
+        btnStorageSaveHere.addEventListener('click', () => {
+          const current = getActiveTab();
+          if (!current || !editor) return;
+          const code = editor.getValue();
+          current.content = code;
+          current.isDirty = false;
+          fsAddOrUpdateFile(currentFsPath, current.name, code);
+          saveTabsToStorage();
+          renderTabs();
+          renderStorageList();
+          showToast(`Saved "${current.name}" to ${currentFsPath}`, 'success');
+        });
+      }
+
+      // Import File(s) into Current Storage Folder
+      if (btnStorageImport && realFilePicker) {
+        btnStorageImport.addEventListener('click', () => {
+          realFilePicker.click();
+        });
+
+        realFilePicker.addEventListener('change', (e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 0) return;
+          let loaded = 0;
+          files.forEach(f => {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              const content = evt.target.result;
+              fsAddOrUpdateFile(currentFsPath, f.name, content);
+              loaded++;
+              if (loaded === files.length) {
+                openFileInEditor(files[0].name, content);
+                closeStorageModal();
+                showToast(`Imported ${files.length} file(s) into ${currentFsPath}`, 'success');
+              }
+            };
+            reader.readAsText(f);
+          });
+          realFilePicker.value = '';
+        });
+      }
+
+      // ==========================================
+      // Recent Files Modal
+      // ==========================================
+      function openRecentFilesModal() {
+        if (!recentFilesList) return;
+        recentFilesList.innerHTML = '';
+        const recents = VIRTUAL_FS.recent || [];
+        if (recents.length === 0) {
+          recentFilesList.innerHTML = `<div style="text-align:center; padding:24px; color:#94a3b8; font-size:13px;">No recent files found.</div>`;
+        } else {
+          recents.forEach(r => {
+            const row = document.createElement('div');
+            row.className = 'fs-item';
+            const iconInfo = getFileIconClass(r.name);
+            row.innerHTML = `
+              <div class="fs-item-left">
+                <div class="fs-icon-wrap ${iconInfo.wrapClass}">
+                  <i class="${iconInfo.iconClass}"></i>
+                </div>
+                <div class="fs-info-col">
+                  <span class="fs-name">${escapeHtml(r.name)}</span>
+                  <span class="fs-meta">${escapeHtml(r.path)} • ${formatRelativeTime(r.time)}</span>
+                </div>
+              </div>
+            `;
+            row.addEventListener('click', () => {
+              const dir = r.path.substring(0, r.path.lastIndexOf('/'));
+              const items = fsGetItems(dir);
+              const file = items.find(i => i.name === r.name);
+              const content = file ? file.content : '';
+              openFileInEditor(r.name, content);
+              if (recentModalBackdrop) recentModalBackdrop.classList.remove('active');
+            });
+            recentFilesList.appendChild(row);
+          });
+        }
+        if (recentModalBackdrop) recentModalBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'recent' }, '');
+      }
+
+      if (btnRecentClose) {
+        btnRecentClose.addEventListener('click', () => {
+          if (recentModalBackdrop) recentModalBackdrop.classList.remove('active');
+          if (window.history.state && window.history.state.modal === 'recent') {
+            window.history.back();
+          }
+        });
+      }
+
+      // ==========================================
+      // Bookmarks Modal
+      // ==========================================
+      function openBookmarksModal() {
+        if (!bookmarksFilesList) return;
+        bookmarksFilesList.innerHTML = '';
+        const starred = [];
+        Object.keys(VIRTUAL_FS.folders).forEach(fPath => {
+          (VIRTUAL_FS.folders[fPath] || []).forEach(item => {
+            if (item.type === 'file' && item.bookmarked) {
+              starred.push(item);
+            }
+          });
+        });
+
+        if (starred.length === 0) {
+          bookmarksFilesList.innerHTML = `<div style="text-align:center; padding:24px; color:#94a3b8; font-size:13px;">No bookmarked files. Star any file in Internal Storage to view it here!</div>`;
+        } else {
+          starred.forEach(file => {
+            const row = document.createElement('div');
+            row.className = 'fs-item';
+            const iconInfo = getFileIconClass(file.name);
+            row.innerHTML = `
+              <div class="fs-item-left">
+                <div class="fs-icon-wrap ${iconInfo.wrapClass}">
+                  <i class="${iconInfo.iconClass}"></i>
+                </div>
+                <div class="fs-info-col">
+                  <span class="fs-name">${escapeHtml(file.name)}</span>
+                  <span class="fs-meta">${escapeHtml(file.path)}</span>
+                </div>
+              </div>
+              <i class="fa-solid fa-star" style="color:#eab308; font-size:15px; margin-right:4px;"></i>
+            `;
+            row.addEventListener('click', () => {
+              openFileInEditor(file.name, file.content || '');
+              if (bookmarksModalBackdrop) bookmarksModalBackdrop.classList.remove('active');
+            });
+            bookmarksFilesList.appendChild(row);
+          });
+        }
+        if (bookmarksModalBackdrop) bookmarksModalBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'bookmarks' }, '');
+      }
+
+      if (btnBookmarksClose) {
+        btnBookmarksClose.addEventListener('click', () => {
+          if (bookmarksModalBackdrop) bookmarksModalBackdrop.classList.remove('active');
+          if (window.history.state && window.history.state.modal === 'bookmarks') {
+            window.history.back();
+          }
+        });
+      }
+
+      // ==========================================
+      // Storage Manager Modal
+      // ==========================================
+      function openStorageManagerModal() {
+        if (!storageMgrDetails) return;
+        let totalFiles = 0;
+        let totalFolders = Object.keys(VIRTUAL_FS.folders).length;
+        let totalBytes = 0;
+        Object.keys(VIRTUAL_FS.folders).forEach(k => {
+          (VIRTUAL_FS.folders[k] || []).forEach(i => {
+            if (i.type === 'file') {
+              totalFiles++;
+              totalBytes += (i.content || '').length;
+            }
+          });
+        });
+        const kb = (totalBytes / 1024).toFixed(1);
+        storageMgrDetails.innerHTML = `
+          <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #e2e8f0;"><b>Total Files:</b> <span>${totalFiles}</span></div>
+          <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #e2e8f0;"><b>Total Folders:</b> <span>${totalFolders}</span></div>
+          <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #e2e8f0;"><b>Storage Used:</b> <span>${kb} KB (${totalBytes} bytes)</span></div>
+          <div style="display:flex; justify-content:space-between; padding:4px 0;"><b>Root Directory:</b> <span>${ROOT_PATH}</span></div>
+        `;
+        if (storageMgrModalBackdrop) storageMgrModalBackdrop.classList.add('active');
+        window.history.pushState({ modal: 'storage_mgr' }, '');
+      }
+
+      if (btnStorageMgrClose) {
+        btnStorageMgrClose.addEventListener('click', () => {
+          if (storageMgrModalBackdrop) storageMgrModalBackdrop.classList.remove('active');
+          if (window.history.state && window.history.state.modal === 'storage_mgr') {
+            window.history.back();
+          }
+        });
+      }
+
+      if (btnStorageMgrBackup) {
+        btnStorageMgrBackup.addEventListener('click', () => {
+          if (storageMgrModalBackdrop) storageMgrModalBackdrop.classList.remove('active');
+          backupAllData();
+        });
+      }
+
+      if (btnStorageMgrClear) {
+        btnStorageMgrClear.addEventListener('click', () => {
+          if (confirm('Clear all storage files and reset to initial state?')) {
+            VIRTUAL_FS = JSON.parse(JSON.stringify(INITIAL_FS));
+            saveFsToStorage();
+            if (storageMgrModalBackdrop) storageMgrModalBackdrop.classList.remove('active');
+            showToast('Storage cache cleared and reset to initial state');
+          }
+        });
+      }
+
+      // ==========================================
+      // Dialog Prompt Helpers
+      // ==========================================
+      function promptNewFile() {
+        showInputModal('Create New File', 'new_file.html', (name) => {
+          if (name) {
+            const clean = name.trim();
+            const starter = getStarterCode(clean);
+            fsAddOrUpdateFile(ROOT_PATH, clean, starter);
+            const newTab = createNewTab(clean, starter);
+            switchTab(newTab.id);
+            showToast('Created ' + clean, 'success');
+          }
+        });
+      }
+
+      function promptSaveAs() {
+        const current = getActiveTab();
+        const initial = current ? current.name : 'index.html';
+        showInputModal('Save As', initial, (name) => {
+          if (name) {
+            current.name = name.trim();
+            current.language = detectLanguage(name);
+            saveCurrentFile();
+          }
+        });
+      }
+
+      function promptRenameCurrentFile() {
+        const current = getActiveTab();
+        if (!current) return;
+        showInputModal('Rename Current File', current.name, (newName) => {
+          if (newName && newName.trim() && newName.trim() !== current.name) {
+            const oldName = current.name;
+            const cleanName = newName.trim();
+            current.name = cleanName;
+            current.language = detectLanguage(cleanName);
+            if (editor) {
+              editor.session.setMode('ace/mode/' + current.language);
+            }
+            fsRenameEntry(currentFsPath || ROOT_PATH, oldName, cleanName, false);
+            saveTabsToStorage();
+            renderTabs();
+            showToast(`Renamed to ${cleanName}`, 'success');
+          }
+        });
+      }
+
+      function showInputModal(title, defaultVal, callback) {
+        if (!inputModalTitle || !inputModalField || !inputModalBackdrop) return;
+        inputModalTitle.textContent = title;
+        inputModalField.value = defaultVal || '';
+        inputModalCallback = callback;
+        inputModalBackdrop.classList.add('active');
+        setTimeout(() => {
+          inputModalField.focus();
+          inputModalField.select();
+        }, 100);
+      }
+
+      if (inputModalCancel) {
+        inputModalCancel.addEventListener('click', () => {
+          if (inputModalBackdrop) inputModalBackdrop.classList.remove('active');
+        });
+      }
+
+      if (inputModalConfirm) {
+        inputModalConfirm.addEventListener('click', () => {
+          const val = inputModalField.value.trim();
+          if (inputModalBackdrop) inputModalBackdrop.classList.remove('active');
+          if (inputModalCallback) inputModalCallback(val);
+        });
+      }
+
+      if (confirmBtnDiscard) {
+        confirmBtnDiscard.addEventListener('click', () => {
+          if (confirmDiscardCallback) confirmDiscardCallback();
+        });
+      }
+
+      if (confirmBtnSave) {
+        confirmBtnSave.addEventListener('click', () => {
+          if (confirmSaveCallback) confirmSaveCallback();
+        });
+      }
+
+      // Top bar buttons wireup
+      // Pencil icon: Rename Current File
+      const btnTopEdit = document.getElementById('btn-top-edit');
+      if (btnTopEdit) {
+        btnTopEdit.addEventListener('click', promptRenameCurrentFile);
+      }
+
+      // Add tab button (+)
+      const btnAddTab = document.getElementById('btn-add-tab');
+      if (btnAddTab) {
+        btnAddTab.addEventListener('click', promptNewFile);
+      }
+
+      // Close dropdowns on outside click
+      window.addEventListener('click', (e) => {
+        if (!e.target.closest('#folder-dropdown-menu') && !e.target.closest('#btn-top-folder')) {
+          if (folderDropdown) folderDropdown.classList.remove('show');
+        }
+        if (!e.target.closest('#dots-dropdown-menu') && !e.target.closest('#btn-top-dots')) {
+          if (dotsDropdown) dotsDropdown.classList.remove('show');
+        }
+        if (!e.target.closest('#settings-dropdown-menu') && !e.target.closest('#settings-btn-dots')) {
+          if (settingsDropdown) settingsDropdown.classList.remove('show');
+        }
+      });
+
+      // Native Back Button Interception (History API)
+      window.addEventListener('popstate', () => {
+        if (folderDropdown) folderDropdown.classList.remove('show');
+        if (dotsDropdown) dotsDropdown.classList.remove('show');
+        if (settingsDropdown) settingsDropdown.classList.remove('show');
+
+        if (previewOverlay && previewOverlay.classList.contains('active')) {
+          previewOverlay.classList.remove('active');
+        } else if (settingsScreen && settingsScreen.classList.contains('active')) {
+          settingsScreen.classList.remove('active');
+        } else if (miniToolbarBackdrop && miniToolbarBackdrop.classList.contains('active')) {
+          miniToolbarBackdrop.classList.remove('active');
+        } else if (storageBackdrop && storageBackdrop.classList.contains('active')) {
+          storageBackdrop.classList.remove('active');
+        } else if (restoreModalBackdrop && restoreModalBackdrop.classList.contains('active')) {
+          restoreModalBackdrop.classList.remove('active');
+        } else if (recentModalBackdrop && recentModalBackdrop.classList.contains('active')) {
+          recentModalBackdrop.classList.remove('active');
+        } else if (bookmarksModalBackdrop && bookmarksModalBackdrop.classList.contains('active')) {
+          bookmarksModalBackdrop.classList.remove('active');
+        } else if (storageMgrModalBackdrop && storageMgrModalBackdrop.classList.contains('active')) {
+          storageMgrModalBackdrop.classList.remove('active');
+        } else if (inputModalBackdrop && inputModalBackdrop.classList.contains('active')) {
+          inputModalBackdrop.classList.remove('active');
+        } else if (confirmModalBackdrop && confirmModalBackdrop.classList.contains('active')) {
+          confirmModalBackdrop.classList.remove('active');
+        } else if (navDrawer && navDrawer.classList.contains('active')) {
+          navDrawer.classList.remove('active');
+          if (drawerBackdrop) drawerBackdrop.classList.remove('active');
+        }
+      });
+
+      // ==========================================
+      // Helper utilities
+      // ==========================================
+      function getFileIconClass(filename) {
+        const ext = (filename || '').split('.').pop().toLowerCase();
+        switch (ext) {
+          case 'html':
+          case 'htm':
+            return { wrapClass: 'fs-icon-html', iconClass: 'fa-brands fa-html5' };
+          case 'js':
+            return { wrapClass: 'fs-icon-js', iconClass: 'fa-brands fa-js' };
+          case 'css':
+            return { wrapClass: 'fs-icon-css', iconClass: 'fa-brands fa-css3-alt' };
+          case 'py':
+            return { wrapClass: 'fs-icon-py', iconClass: 'fa-brands fa-python' };
+          case 'json':
+            return { wrapClass: 'fs-icon-json', iconClass: 'fa-solid fa-file-code' };
+          default:
+            return { wrapClass: 'fs-icon-code', iconClass: 'fa-solid fa-file-lines' };
+        }
+      }
+
+      function formatDate(ts) {
+        const d = new Date(ts);
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        const hr = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        return `${m}/${day} ${hr}:${min}`;
+      }
+
+      function formatRelativeTime(ts) {
+        const diff = Math.floor((Date.now() - ts) / 1000);
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+      }
+
+      function getStarterCode(filename) {
+        const ext = (filename || '').split('.').pop().toLowerCase();
+        if (ext === 'html' || ext === 'htm') {
+          return `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>${escapeHtml(filename)}</title>\n</head>\n<body>\n  <h1>${escapeHtml(filename)}</h1>\n</body>\n</html>`;
+        } else if (ext === 'js') {
+          return `// ${filename}\nconsole.log("Hello from ${filename}");\n`;
+        } else if (ext === 'css') {
+          return `/* ${filename} */\nbody {\n  margin: 0;\n  padding: 16px;\n}\n`;
+        } else if (ext === 'py') {
+          return `# ${filename}\ndef main():\n    print("Hello from ${filename}")\n\nif __name__ == '__main__':\n    main()\n`;
+        } else if (ext === 'json') {
+          return `{\n  "name": "${escapeHtml(filename)}",\n  "version": "1.0.0"\n}\n`;
+        }
+        return `// ${filename}\n`;
+      }
+
+      function showToast(msg, type = 'info') {
+        const wrap = document.getElementById('toast-wrap');
+        if (!wrap) return;
+        const t = document.createElement('div');
+        t.className = 'toast-msg';
+        const icon = type === 'success' ? 'fa-check' : 'fa-circle-info';
+        t.innerHTML = `<i class="fa-solid ${icon}" style="color:#38bdf8;"></i><span>${escapeHtml(msg)}</span>`;
+        wrap.appendChild(t);
+        setTimeout(() => t.remove(), 2600);
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, m => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[m]);
+      }
+
+      function loadFromStorage(key) {
+        try {
+          const val = localStorage.getItem(key);
+          return val ? JSON.parse(val) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      // Initial settings load
+      const savedToolbar = loadFromStorage(STORAGE_TOOLBAR_KEY);
+      if (savedToolbar) STATE.toolbarItems = savedToolbar;
+      const savedSettings = loadFromStorage(STORAGE_SETTINGS_KEY);
+      if (savedSettings) STATE.settings = Object.assign(STATE.settings, savedSettings);
+
+      // Start application
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEditor);
+      } else {
+        initEditor();
+      }
+
+    })();
+  </script>
+</body>
+</html>

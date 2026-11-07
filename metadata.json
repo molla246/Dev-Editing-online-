@@ -1,0 +1,6 @@
+{
+  "name": "DevEditor - Mobile-Friendly Code Editor",
+  "description": "A fast, responsive single-file mobile-friendly code editor powered by Ace Editor with dark mode, quick symbol toolbar, code execution preview, and local history management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

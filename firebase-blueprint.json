@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "VaultPrimary": {
+      "title": "Vault Primary",
+      "description": "Primary vault container object",
+      "type": "object",
+      "properties": {
+        "passwords": { "type": "array" },
+        "pages": { "type": "array" },
+        "labels": { "type": "array" },
+        "pageTabs": { "type": "array" },
+        "logs": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "PasswordItem": {
+      "title": "Password Item",
+      "description": "Stored password item entry",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "userId": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "siteUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "note": { "type": "string" },
+        "labels": { "type": "array" },
+        "views": { "type": "number" },
+        "isPinned": { "type": "boolean" },
+        "dateString": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "PageItem": {
+      "title": "Page Item",
+      "description": "Stored document page entry",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "tabId": { "type": "string" },
+        "views": { "type": "number" },
+        "dateString": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "isCodeMode": { "type": "boolean" }
+      }
+    },
+    "LabelItem": {
+      "title": "Label Item",
+      "description": "Label categorization tag",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "PageTabItem": {
+      "title": "Page Tab Item",
+      "description": "Category page tab",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "ActivityLogItem": {
+      "title": "Activity Log Item",
+      "description": "Audit activity log",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "detail": { "type": "string" },
+        "dateString": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/vaultData/{docId}": {
+      "schema": { "$ref": "#/entities/VaultPrimary" },
+      "description": "Primary vault sync container"
+    },
+    "/passwords/{docId}": {
+      "schema": { "$ref": "#/entities/PasswordItem" },
+      "description": "Password items collection"
+    },
+    "/password/{docId}": {
+      "schema": { "$ref": "#/entities/PasswordItem" },
+      "description": "Password items legacy collection"
+    },
+    "/pages/{docId}": {
+      "schema": { "$ref": "#/entities/PageItem" },
+      "description": "Pages collection"
+    },
+    "/labels/{docId}": {
+      "schema": { "$ref": "#/entities/LabelItem" },
+      "description": "Labels collection"
+    },
+    "/pageTabs/{docId}": {
+      "schema": { "$ref": "#/entities/PageTabItem" },
+      "description": "Page tabs collection"
+    },
+    "/activity_logs/{docId}": {
+      "schema": { "$ref": "#/entities/ActivityLogItem" },
+      "description": "Activity logs collection"
+    },
+    "/logs/{docId}": {
+      "schema": { "$ref": "#/entities/ActivityLogItem" },
+      "description": "Logs legacy collection"
+    }
+  }
+}
